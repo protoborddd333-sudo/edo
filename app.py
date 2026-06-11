@@ -16,25 +16,23 @@ def detect_case(text):
     elif "cónico" in text or "cono" in text or "dosing" in text: return 5
     return 0
 
-st.title("🏭 Plataforma de Resolución de EDOs Industriales")
+st.title("🏭 Simulador Paramétrico de EDOs Industriales")
 
 user_input = st.text_area(
-    "Descripción del Problema:", 
+    "Pegue el problema de ingeniería para configurar automáticamente los parámetros:", 
     value=st.session_state.problem_text, 
-    height=120, 
-    key="textarea_problem",
-    placeholder="Pegue aquí el enunciado del PDF para auto-configurar las matemáticas..."
+    height=120
 )
 
 case_id = detect_case(user_input)
 
 if case_id > 0:
-    st.success(f"✅ Contexto Matemático {case_id} Detectado y Vinculado.")
+    st.success(f"✅ Contexto Matemático {case_id} Vinculado. Sistema en línea.")
     st.markdown("---")
     
+    # PARAMETRIZACIÓN DINÁMICA (Izquierda)
     with st.sidebar:
-        st.header("⚙️ Entradas Dinámicas")
-        
+        st.header(f"⚙️ Parámetros: Caso {case_id}")
         if case_id == 1:
             T0 = st.number_input("Temp. Inicial (°C)", value=150.0)
             Ta = st.number_input("Temp. Ambiente (°C)", value=25.0)
@@ -47,11 +45,11 @@ if case_id > 0:
             r = st.number_input("Radio Cilindro (m)", value=1.0)
             h0 = st.number_input("Altura Inicial (m)", value=4.0)
             a = st.number_input("Área Orificio (m²)", value=0.005, format="%.4f")
-            C_factor = st.number_input("Coef. Fricción", value=0.6)
+            C_factor = st.number_input("Coef. Fricción (C)", value=0.6)
             steps, figs_dict, interp = solver.solve_case_2(r, h0, a, C_factor)
             
         elif case_id == 3:
-            V = st.number_input("Volumen Tanque (L)", value=1000.0)
+            V = st.number_input("Volumen Tanque (L)", value=500.0)
             Q0 = st.number_input("Masa Inicial (kg)", value=0.0)
             cin = st.number_input("Concentración In (kg/L)", value=0.2)
             rin = st.number_input("Flujo In/Out (L/min)", value=5.0)
@@ -68,37 +66,31 @@ if case_id > 0:
             H = st.number_input("Altura Cono (m)", value=2.0)
             R_top = st.number_input("Radio Superior (m)", value=0.5)
             h0 = st.number_input("Altura Líquido Inicial (m)", value=2.0)
-            steps, figs_dict, interp = solver.solve_case_5(H, R_top, h0)
+            a = st.number_input("Área Orificio (m²)", value=0.005, format="%.4f")
+            C_factor = st.number_input("Coef. Fricción (C)", value=0.6)
+            steps, figs_dict, interp = solver.solve_case_5(H, R_top, h0, a, C_factor)
 
-    # --- RENDERIZADO INTERACTIVO Y LIMPIO ---
+    # RENDERIZADO CENTRAL DE ECUACIONES Y GRÁFICAS EXACTAS
     col_math, col_graph = st.columns([1, 1.2])
     
     with col_math:
-        st.subheader("📐 Rigurosidad Analítica")
+        st.subheader("📐 Desarrollo Matemático Analítico")
         with st.container(border=True):
             for step in steps:
+                # Renderiza limpiamente f-strings combinados con LaTeX
                 if step.startswith("$$") and step.endswith("$$"):
-                    st.latex(step.replace("$$", ""))
-                elif "$$" in step:
-                    parts = step.split("$$")
-                    st.markdown(parts[0])
-                    st.latex(parts[1])
+                    st.latex(step.replace("$$", "").strip())
                 else:
                     st.markdown(step)
 
     with col_graph:
-        st.subheader("📊 Panel de Decisión Industrial")
-        # Falla 4 Corregida: Pestañas de gráficos dinámicos y sin ModeBar de Plotly
+        st.subheader("📊 Gráfica Operativa Asintótica")
         tabs = st.tabs(list(figs_dict.keys()))
         for idx, (tab_name, fig) in enumerate(figs_dict.items()):
             with tabs[idx]:
-                st.plotly_chart(
-                    fig, 
-                    use_container_width=True, 
-                    config={'displayModeBar': False} # <- Elimina los botones inútiles de Plotly
-                )
+                # UI limpia: Bloqueo de la barra inútil superior derecha de Plotly
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
-        # Falla 2 Corregida: Output inteligente
-        st.success(f"**💡 Conclusión Ejecutiva Adaptativa:**\n\n{interp}")
+        st.info(f"**💡 Inteligencia Operativa:**\n\n{interp}")
 else:
-    st.info("Pegue el problema del PDF. Esperando parámetros térmicos, de fluidos o mecánicos...")
+    st.info("Esperando contexto... Ingrese palabras clave como 'enfriamiento', 'cilíndrico', 'mezcla', 'actuador' o 'cónico'.")
