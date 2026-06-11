@@ -1,7 +1,30 @@
 import streamlit as st
 import solver
 
-st.set_page_config(page_title="Solver EDO Industrial", page_icon="⚙️", layout="wide")
+# Configuración inicial de la página
+st.set_page_config(page_title="Solver EDO Industrial - TECSUP", page_icon="⚙️", layout="wide")
+
+# --- INYECCIÓN DE CSS INSTITUCIONAL ---
+st.markdown("""
+<style>
+    /* Fondo principal blanco */
+    .stApp {
+        background-color: #FFFFFF;
+    }
+    /* Menú lateral gris claro sutil */
+    [data-testid="stSidebar"] {
+        background-color: #F8F9FA;
+    }
+    /* Forzar textos principales a color oscuro para contraste */
+    .stMarkdown, .stText, h1, h2, h3, p, label {
+        color: #1E1E1E !important;
+    }
+    /* Ajuste para las alertas/info */
+    div[data-testid="stWebsocket"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 if "problem_text" not in st.session_state:
     st.session_state.problem_text = ""
@@ -16,7 +39,19 @@ def detect_case(text):
     elif "cónico" in text or "cono" in text or "dosing" in text: return 5
     return 0
 
-st.title("🏭 Simulador Paramétrico de EDOs Industriales")
+# --- ENCABEZADO MEMBRETADO ---
+col_title, col_logo = st.columns([4, 1])
+
+with col_title:
+    st.title("🏭 Simulador Paramétrico de EDOs")
+with col_logo:
+    try:
+        # Carga el logo local (asegúrate de que la imagen esté en la misma carpeta)
+        st.image("logjitodetecsup.png", use_container_width=True)
+    except:
+        st.caption("*(Logo Institucional)*")
+
+st.markdown("---")
 
 user_input = st.text_area(
     "Pegue el problema de ingeniería para configurar automáticamente los parámetros:", 
@@ -30,7 +65,6 @@ if case_id > 0:
     st.success(f"✅ Contexto Matemático {case_id} Vinculado. Sistema en línea.")
     st.markdown("---")
     
-    # PARAMETRIZACIÓN DINÁMICA (Izquierda)
     with st.sidebar:
         st.header(f"⚙️ Parámetros: Caso {case_id}")
         if case_id == 1:
@@ -70,14 +104,12 @@ if case_id > 0:
             C_factor = st.number_input("Coef. Fricción (C)", value=0.6)
             steps, figs_dict, interp = solver.solve_case_5(H, R_top, h0, a, C_factor)
 
-    # RENDERIZADO CENTRAL DE ECUACIONES Y GRÁFICAS EXACTAS
     col_math, col_graph = st.columns([1, 1.2])
     
     with col_math:
-        st.subheader("📐 Desarrollo Matemático Analítico")
+        st.subheader("📐 Desarrollo Analítico")
         with st.container(border=True):
             for step in steps:
-                # Renderiza limpiamente f-strings combinados con LaTeX
                 if step.startswith("$$") and step.endswith("$$"):
                     st.latex(step.replace("$$", "").strip())
                 else:
@@ -88,7 +120,6 @@ if case_id > 0:
         tabs = st.tabs(list(figs_dict.keys()))
         for idx, (tab_name, fig) in enumerate(figs_dict.items()):
             with tabs[idx]:
-                # UI limpia: Bloqueo de la barra inútil superior derecha de Plotly
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         st.info(f"**💡 Inteligencia Operativa:**\n\n{interp}")
