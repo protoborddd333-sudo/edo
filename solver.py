@@ -2,8 +2,23 @@ import numpy as np
 import math
 import plotly.graph_objects as go
 
+# Variable global para el estilo de los ejes en todos los gráficos
+AXIS_STYLE = dict(gridcolor='#E2E8F0', color='#1E1E1E', zerolinecolor='#E2E8F0')
+
+def get_base_layout(title, x_title, y_title):
+    """Genera el layout base con fondo blanco y cuadrícula institucional"""
+    return dict(
+        title=title, 
+        xaxis_title=x_title, 
+        yaxis_title=y_title, 
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        xaxis=AXIS_STYLE,
+        yaxis=AXIS_STYLE
+    )
+
 def solve_case_1(T0, Ta, T1, t1, T_obj):
-    """Caso 1: Enfriamiento de Newton"""
     if (T1 - Ta) > 0 and (T0 - Ta) > 0 and t1 > 0 and T0 > T1:
         k = -math.log((T1 - Ta) / (T0 - Ta)) / t1
         t_total = -math.log((T_obj - Ta) / (T0 - Ta)) / k if (T_obj - Ta) > 0 else 0
@@ -11,7 +26,6 @@ def solve_case_1(T0, Ta, T1, t1, T_obj):
     else:
         k, t_total, t_adicional = 0.0511, 41.51, 31.51
 
-    # Corrección de Numeración y Separación de Fracciones Largas
     steps = [
         r"**1. Modelo de la EDO:**",
         r"$$ \frac{dT}{dt} = -k(T - T_a) $$",
@@ -35,16 +49,17 @@ def solve_case_1(T0, Ta, T1, t1, T_obj):
     T_vec = Ta + (T0 - Ta) * np.exp(-k * t_vec)
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=T_vec, mode='lines', name='T(t)', line=dict(color='red', width=3)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[Ta, Ta], mode='lines', name='Temp. Ambiente', line=dict(color='blue', dash='dash')))
+    # AZUL TECSUP Aplicado
+    fig.add_trace(go.Scatter(x=t_vec, y=T_vec, mode='lines', name='T(t)', line=dict(color='#00A8E1', width=4)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[Ta, Ta], mode='lines', name='Temp. Ambiente', line=dict(color='#888888', dash='dash')))
     fig.add_trace(go.Scatter(x=[t_total], y=[T_obj], mode='markers+text', name='Punto Objetivo', text=[f"({t_total:.1f}m, {T_obj}°C)"], textposition="top right", marker=dict(size=10, color='orange')))
-    fig.update_layout(title="Perfil Térmico T(t)", xaxis_title="Tiempo (min)", yaxis_title="Temperatura (°C)", margin=dict(l=20, r=20, t=40, b=20))
+    
+    fig.update_layout(**get_base_layout("Perfil Térmico T(t)", "Tiempo (min)", "Temperatura (°C)"))
     
     interp = f"El técnico debe esperar {t_adicional:.1f} minutos adicionales. La curva garantiza matemáticamente que el rodamiento nunca descenderá de los {Ta}°C."
     return steps, {"T(t) vs t": fig}, interp
 
 def solve_case_2(r, h0, a, C_factor):
-    """Caso 2: Torricelli Cilíndrico"""
     g = 9.8
     r = max(r, 0.01)
     A0 = math.pi * r**2
@@ -75,15 +90,16 @@ def solve_case_2(r, h0, a, C_factor):
     h_vec = np.maximum(0, math.sqrt(h0) - (K_val / 2) * t_vec)**2
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, fill='tozeroy', mode='lines', line=dict(color='#FFB300', width=3)))
+    # AZUL TECSUP Aplicado
+    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, fill='tozeroy', mode='lines', line=dict(color='#00A8E1', width=4), fillcolor='rgba(0, 168, 225, 0.2)'))
     fig.add_trace(go.Scatter(x=[t_end/60], y=[0], mode='markers+text', text=[f"Vacío en {t_end/60:.1f}m"], textposition="top right", marker=dict(size=10, color='red')))
-    fig.update_layout(title="Nivel del Tanque h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura (m)", margin=dict(l=20, r=20, t=40, b=20))
+    
+    fig.update_layout(**get_base_layout("Nivel del Tanque h(t)", "Tiempo (min)", "Altura (m)"))
     
     interp = f"El vaciado total demora {t_end/60:.1f} min. La forma parabólica revela que el caudal es muy fuerte al principio debido a la presión hidrostática."
     return steps, {"Nivel vs t": fig}, interp
 
 def solve_case_3(V, Q0, cin, rin, rout, t_target):
-    """Caso 3: Mezclas a Volumen Constante"""
     V = max(V, 1.0)
     factor = rout / V
     inflow = rin * cin
@@ -94,7 +110,7 @@ def solve_case_3(V, Q0, cin, rin, rout, t_target):
         r"**1. Modelo de la EDO (Balance de Masa):**",
         rf"$$ \frac{{dQ}}{{dt}} = {rin}({cin}) - {rout}\left(\frac{{Q}}{{{V:.1f}}}\right) $$",
         rf"$$ \implies \frac{{dQ}}{{dt}} + {factor:.4f}Q = {inflow:.2f} $$",
-        r"**2. Solución General (Factor Integrante):**",
+        r"**2. Solución General:**",
         rf"$$ Q(t) = {Q_steady:.1f} + C_1 e^{{-{factor:.4f}t}} $$",
         r"**3. Condición Inicial ($t=0$):**",
         rf"$$ Q(0) = {Q0} \implies {Q0} = {Q_steady:.1f} + C_1 $$",
@@ -111,16 +127,17 @@ def solve_case_3(V, Q0, cin, rin, rout, t_target):
     Q_vec = Q_steady + C_1 * np.exp(-factor * t_vec)
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=Q_vec, mode='lines', line=dict(color='green', width=3)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[Q_steady, Q_steady], mode='lines', name='Límite Saturación', line=dict(color='blue', dash='dash')))
-    fig.update_layout(title="Masa de Desengrasante Q(t)", xaxis_title="Tiempo (min)", yaxis_title="Cantidad (kg)", margin=dict(l=20, r=20, t=40, b=20))
+    # AZUL TECSUP Aplicado
+    fig.add_trace(go.Scatter(x=t_vec, y=Q_vec, mode='lines', name='Masa', line=dict(color='#00A8E1', width=4)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[Q_steady, Q_steady], mode='lines', name='Límite Saturación', line=dict(color='#888888', dash='dash')))
+    
+    fig.update_layout(**get_base_layout("Masa de Desengrasante Q(t)", "Tiempo (min)", "Cantidad (kg)"))
     
     Q_final = Q_steady + C_1*math.exp(-factor*t_target)
     interp = f"A los {t_target} min hay {Q_final:.1f} kg. La curva asegura que el sistema tenderá asintóticamente al límite de saturación de {Q_steady} kg."
     return steps, {"Saturación Química": fig}, interp
 
 def solve_case_4(t_test, y_test, tau_ideal, force=10.0):
-    """Caso 4: Actuador Hidráulico"""
     t_test = max(t_test, 0.1)
     y_safe = min(y_test, force * 0.999) 
     tau_real = -t_test / math.log(1 - (y_safe / force))
@@ -136,7 +153,6 @@ def solve_case_4(t_test, y_test, tau_ideal, force=10.0):
         rf"$$ y(t) = {force}\left(1 - e^{{-t/\tau}}\right) $$",
         r"**5. Despeje de Constante Real $\tau$:**",
         rf"$$ {y_test} = {force}\left(1 - e^{{-{t_test}/\tau}}\right) $$",
-        rf"$$ \implies e^{{-{t_test}/\tau}} = {1 - y_safe/force:.4f} $$",
         rf"$$ \implies \tau = \frac{{-{t_test}}}{{\ln({1 - y_safe/force:.4f})}} $$",
         rf"$$ \implies \tau \approx {tau_real:.2f} \text{{ s}} $$"
     ]
@@ -146,16 +162,17 @@ def solve_case_4(t_test, y_test, tau_ideal, force=10.0):
     y_vec = force * (1 - np.exp(-t_vec / tau_real))
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=y_vec, mode='lines', line=dict(color='teal', width=3)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[force, force], mode='lines', line=dict(color='gray', dash='dash'), name='Recorrido Máximo'))
+    # AZUL TECSUP Aplicado
+    fig.add_trace(go.Scatter(x=t_vec, y=y_vec, mode='lines', name='y(t)', line=dict(color='#00A8E1', width=4)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[force, force], mode='lines', line=dict(color='#888888', dash='dash'), name='Recorrido Máximo'))
     fig.add_trace(go.Scatter(x=[t_test], y=[y_test], mode='markers+text', text=["Prueba"], textposition="bottom right", marker=dict(size=10, color='red')))
-    fig.update_layout(title="Respuesta del Cilindro y(t)", xaxis_title="Tiempo (s)", yaxis_title="Posición (cm)", margin=dict(l=20, r=20, t=40, b=20))
+    
+    fig.update_layout(**get_base_layout("Respuesta del Cilindro y(t)", "Tiempo (s)", "Posición (cm)"))
     
     interp = f"El $\\tau$ medido es {tau_real:.1f}s vs ideal {tau_ideal}s. Retardos elevados denotan obstrucción hidráulica o fricción extrema."
     return steps, {"Desplazamiento vs t": fig}, interp
 
 def solve_case_5(H, R_top, h0, a, C_factor):
-    """Caso 5: Torricelli Cónico"""
     g = 9.8
     H, R_top = max(H, 0.01), max(R_top, 0.01)
     K_val = (C_factor * a * math.sqrt(2 * g)) / (math.pi * (R_top/H)**2)
@@ -163,22 +180,19 @@ def solve_case_5(H, R_top, h0, a, C_factor):
     t_end = C_1 / max(K_val, 1e-8)
 
     steps = [
-        r"**1. Modelo de la EDO (Ley de Torricelli):**",
+        r"**1. Modelo de la EDO:**",
         r"$$ A(h)\frac{dh}{dt} = -C a \sqrt{2gh} $$",
-        r"**2. Relación Geométrica del Cono:**",
-        rf"$$ r = \frac{{R}}{{H}}h = {R_top/H:.2f}h $$",
-        rf"$$ \implies A(h) = \pi({R_top/H:.2f}h)^2 = {math.pi*(R_top/H)**2:.4f} h^2 $$",
+        r"**2. Relación Geométrica:**",
+        rf"$$ r = \frac{{R}}{{H}}h \implies A(h) = {math.pi*(R_top/H)**2:.4f} h^2 $$",
         r"**3. Separación de Variables:**",
-        rf"$$ h^{{3/2}} dh = -\frac{{C a \sqrt{{2g}}}}{{\pi (R/H)^2}} dt $$",
-        rf"$$ \implies h^{{3/2}} dh = -{K_val:.5f} dt $$",
-        r"**4. Condición Inicial e Integración:**",
+        rf"$$ h^{{3/2}} dh = -{K_val:.5f} dt $$",
+        r"**4. Integración y Condición Inicial:**",
         rf"$$ \frac{{2}}{{5}}h^{{5/2}} = -Kt + C_1 $$",
-        rf"$$ h(0) = {h0} \implies C_1 = \frac{{2}}{{5}}({h0})^{{5/2}} = {C_1:.4f} $$",
+        rf"$$ h(0) = {h0} \implies C_1 = {C_1:.4f} $$",
         r"**5. Ecuación Horaria:**",
         rf"$$ h(t) = \left( {h0**(5/2):.3f} - 2.5({K_val:.5f})t \right)^{{0.4}} $$",
         r"**6. Vaciado Total:**",
-        rf"$$ t = \frac{{{C_1:.4f}}}{{{K_val:.5f}}} $$",
-        rf"$$ \implies t \approx {t_end/60:.2f} \text{{ min}} $$"
+        rf"$$ t = \frac{{{C_1:.4f}}}{{{K_val:.5f}}} \approx {t_end/60:.2f} \text{{ min}} $$"
     ]
 
     t_max = max(5.0, t_end * 1.2)
@@ -187,8 +201,10 @@ def solve_case_5(H, R_top, h0, a, C_factor):
     h_vec = base_vec**(2/5)
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, mode='lines', fill='tozeroy', line=dict(color='purple', width=3)))
-    fig.update_layout(title="Vaciado Cónico h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura (m)", margin=dict(l=20, r=20, t=40, b=20))
+    # AZUL TECSUP Aplicado
+    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, mode='lines', fill='tozeroy', line=dict(color='#00A8E1', width=4), fillcolor='rgba(0, 168, 225, 0.2)'))
     
-    interp = f"Tiempo de vaciado: {t_end/60:.2f} min. El perfil es cóncavo: al bajar el nivel el área disminuye, acelerando violentamente la caída del líquido al final."
+    fig.update_layout(**get_base_layout("Vaciado Cónico h(t)", "Tiempo (min)", "Altura (m)"))
+    
+    interp = f"Tiempo de vaciado: {t_end/60:.2f} min. El perfil es cóncavo: al bajar el nivel el área disminuye, acelerando violentamente la caída del líquido."
     return steps, {"Nivel Cónico": fig}, interp
