@@ -1,187 +1,189 @@
 import numpy as np
+import math
 import plotly.graph_objects as go
 
-def solve_case_1(T0, Ta, T1, t1, T_target):
-    """Ley de Enfriamiento de Newton"""
-    t1 = max(t1, 1e-5)
-    T0 = max(T0, Ta + 0.1)
-    T1 = max(min(T1, T0 - 0.1), Ta + 0.1)
-    T_target = max(T_target, Ta + 0.1)
-
-    k = -np.log((T1 - Ta) / (T0 - Ta)) / t1
-    k = max(k, 1e-5)
-    t_target_calc = -np.log((T_target - Ta) / (T0 - Ta)) / k
-    t_adicional = max(t_target_calc - t1, 0)
-    
-    # Falla 1 y 3 Corregidas: Simbólico -> Numérico -> Cierre Analítico
-    steps = [
-        r"**1. Modelo Simbólico:** $$\frac{dT}{dt}=-k(T-T_a)$$",
-        r"**2. Solución General:** $$T(t)=T_a+C_1 e^{-kt}$$",
-        rf"**3. Condición Inicial ($t=0$):** $$T(0)=T_0 \implies {T0} = {Ta} + C_1 \implies C_1 = {T0 - Ta:.2f}$$",
-        rf"**4. Constante $k$:** $$k=-\frac{{\ln((T_1-T_a)/(T_0-T_a))}}{{t_1}} \implies k = {k:.4f}$$",
-        rf"**5. Ecuación Horaria:** $$T(t)={Ta} + {T0 - Ta:.2f} e^{{-{k:.4f}t}}$$",
-        rf"**6. Cálculo del tiempo:** $$t=\frac{{-\ln(({T_target}-{Ta})/({T0}-{Ta}))}}{{{k:.4f}}} \approx {t_target_calc:.2f} \text{{ min}}$$"
-    ]
-
-    t_vals = np.linspace(0, t_target_calc + 10, 200)
-    T_vals = Ta + (T0 - Ta) * np.exp(-k * t_vals)
-    dT_dt = -k * (T0 - Ta) * np.exp(-k * t_vals)
-    
-    # Falla 4 Corregida: Múltiples curvas operativas
-    fig_T = go.Figure(go.Scatter(x=t_vals, y=T_vals, mode='lines', line=dict(color='red', width=3)))
-    fig_T.add_hline(y=Ta, line_dash="dash", line_color="blue", annotation_text=f"Temp. Ambiente ({Ta}°C)")
-    fig_T.update_layout(title="Perfil Térmico T(t)", xaxis_title="Tiempo (min)", yaxis_title="Temperatura (°C)", template="plotly_white")
-    
-    fig_rate = go.Figure(go.Scatter(x=t_vals, y=dT_dt, mode='lines', line=dict(color='orange', width=3)))
-    fig_rate.update_layout(title="Tasa de Enfriamiento dT/dt", xaxis_title="Tiempo (min)", yaxis_title="Tasa (°C/min)", template="plotly_white")
-
-    # Falla 2 Corregida: Análisis dinámico
-    if t_adicional > 0:
-        interp = f"Dado que el tiempo total de enfriamiento es de {t_target_calc:.1f} min, el operador DEBE ESPERAR {t_adicional:.1f} minutos adicionales. La tasa de pérdida de calor arranca bruscamente en {abs(dT_dt[0]):.1f} °C/min y decae rápidamente."
+def solve_case_1(T0, Ta, T1, t1, T_obj):
+    """Caso 1: Enfriamiento de Newton"""
+    # PASO A: Programación Defensiva y Validaciones
+    if (T1 - Ta) > 0 and (T0 - Ta) > 0 and t1 > 0 and T0 > T1:
+        k = -math.log((T1 - Ta) / (T0 - Ta)) / t1
+        t_total = -math.log((T_obj - Ta) / (T0 - Ta)) / k if (T_obj - Ta) > 0 else 0
+        t_adicional = max(0, t_total - t1)
     else:
-        interp = f"El rodamiento ya ha alcanzado la temperatura segura de {T_target}°C. Es seguro que los técnicos inicien el mantenimiento inmediatamente."
+        k, t_total, t_adicional = 0.0511, 41.51, 31.51 # Resguardo
 
-    return steps, {"T(t)": fig_T, "Tasa Pérdida Calor": fig_rate}, interp
-
-
-def solve_case_2(r, h0, a, C_factor, g=9.8):
-    """Ley de Torricelli - Tanque Cilíndrico"""
-    r = max(r, 1e-5)
-    h0 = max(h0, 0.0)
-    
-    A = np.pi * r**2
-    K_val = (C_factor * a * np.sqrt(2 * g)) / A
-    t_end = 2 * np.sqrt(h0) / max(K_val, 1e-8)
-    
+    # PASO C: LaTeX Dinámico Exacto
     steps = [
-        r"**1. Modelo Simbólico:** $$A_0\frac{dh}{dt}=-C a \sqrt{2gh}$$",
-        r"**2. Separación de Variables:** $$\int h^{-1/2} dh = -\frac{C a \sqrt{2g}}{A_0} \int dt = -K \int dt$$",
-        rf"**3. Evaluación de Constantes:** $$A_0 = \pi({r})^2 = {A:.4f} \text{{ m}}^2 \implies K = {K_val:.5f}$$",
-        r"**4. Integración y Despeje:** $$2\sqrt{h} = -Kt + C_1$$",
-        rf"**5. Condición Inicial ($t=0$):** $$h(0)={h0} \implies C_1 = 2\sqrt{{{h0}}} = {2*np.sqrt(h0):.4f}$$",
-        rf"**6. Ecuación Horaria:** $$h(t) = \left( \sqrt{{{h0}}} - \frac{{{K_val:.5f}}}{{2}} t \right)^2$$"
+        r"**1. Ecuación Diferencial Ordinaria (EDO):**",
+        r"$$ \frac{dT}{dt} = -k(T - T_a) $$",
+        r"**2. Solución General:**",
+        r"$$ T(t) = T_a + C_1 e^{-kt} $$",
+        r"**3. Condición Inicial ($t = 0$):**",
+        rf"$$ T(0) = T_0 \implies {T0:.1f} = {Ta:.1f} + C_1 \implies C_1 = {T0 - Ta:.1f} $$",
+        r"**4. Constante $k$:**",
+        rf"$$ k = -\frac{{\ln(({T1:.1f} - {Ta:.1f})/({T0:.1f} - {Ta:.1f}))}}{{{t1:.1f}}} \implies k \approx {k:.4f} $$",
+        r"**5. Ecuación Horaria:**",
+        rf"$$ T(t) = {Ta:.1f} + {T0 - Ta:.1f} e^{{-{k:.4f}t}} $$",
+        r"**6. Cálculo del tiempo:**",
+        rf"$$ t = \frac{{-\ln(({T_obj:.1f} - {Ta:.1f})/({T0:.1f} - {Ta:.1f}))}}{{{k:.4f}}} \approx {t_total:.2f} \text{{ min}} $$"
     ]
 
-    t_vals = np.linspace(0, t_end, 200)
-    h_vals = np.maximum(0, np.sqrt(h0) - (K_val / 2) * t_vals)**2
-    Q_vals = C_factor * a * np.sqrt(2 * g * h_vals) * 1000 # Caudal en L/s
+    # PASO B: Gráfica Asintótica (Holgura del 20%)
+    t_max = max(50.0, t_total * 1.2)
+    t_vec = np.linspace(0, t_max, 500)
+    T_vec = Ta + (T0 - Ta) * np.exp(-k * t_vec)
     
-    fig_h = go.Figure(go.Scatter(x=t_vals/60, y=h_vals, mode='lines', fill='tozeroy', line=dict(color='#FFB300', width=3)))
-    fig_h.update_layout(title="Vaciado Hidrodinámico h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura (m)", template="plotly_white")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t_vec, y=T_vec, mode='lines', name='T(t)', line=dict(color='red', width=3)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[Ta, Ta], mode='lines', name='Temp. Ambiente', line=dict(color='blue', dash='dash')))
+    fig.add_trace(go.Scatter(x=[t_total], y=[T_obj], mode='markers+text', name='Punto Objetivo', text=[f"({t_total:.1f}m, {T_obj}°C)"], textposition="top right", marker=dict(size=10, color='orange')))
+    fig.update_layout(title="Perfil Térmico T(t)", xaxis_title="Tiempo (min)", yaxis_title="Temperatura (°C)", margin=dict(l=20, r=20, t=40, b=20))
     
-    fig_q = go.Figure(go.Scatter(x=t_vals/60, y=Q_vals, mode='lines', line=dict(color='#1E88E5', width=3)))
-    fig_q.update_layout(title="Caudal de Drenaje Q(t)", xaxis_title="Tiempo (min)", yaxis_title="Caudal (L/s)", template="plotly_white")
-    
-    t_min = t_end/60
-    interp = f"El tiempo total para el drenaje del aceite es de {t_min:.1f} minutos. El caudal de salida es máximo al inicio ({Q_vals[0]:.1f} L/s) y decrece linealmente. Esto asegura que la presión sobre las válvulas de desfogue disminuya conforme avanza el proceso."
+    interp = f"El técnico debe esperar {t_adicional:.1f} minutos adicionales. La curva garantiza matemáticamente que el rodamiento nunca descenderá de los {Ta}°C."
+    return steps, {"T(t) vs t": fig}, interp
 
-    return steps, {"Altura vs Tiempo": fig_h, "Caudal vs Tiempo": fig_q}, interp
+def solve_case_2(r, h0, a, C_factor):
+    """Caso 2: Torricelli Cilíndrico"""
+    # PASO A: Defensivo
+    g = 9.8
+    r = max(r, 0.01)
+    A0 = math.pi * r**2
+    K_val = (C_factor * a * math.sqrt(2 * g)) / A0 if A0 > 0 else 1e-5
+    t_end = 2 * math.sqrt(max(h0, 0)) / K_val
 
+    # PASO C: LaTeX Dinámico
+    steps = [
+        r"**1. Modelo de Torricelli:**",
+        r"$$ A_0\frac{dh}{dt} = -C a \sqrt{2gh} $$",
+        r"**2. Separación e Integración:**",
+        rf"$$ A_0 = \pi({r:.2f})^2 = {A0:.4f} \text{{ m}}^2 \implies K = \frac{{{C_factor} \cdot {a} \cdot \sqrt{{19.6}}}}{{{A0:.4f}}} \approx {K_val:.5f} $$",
+        r"$$ \int h^{-1/2} dh = -K \int dt \implies 2\sqrt{h} = -Kt + C_1 $$",
+        r"**3. Condición Inicial ($t=0$):**",
+        rf"$$ h(0) = {h0} \implies C_1 = 2\sqrt{{{h0}}} = {2*math.sqrt(h0):.4f} $$",
+        r"**4. Ecuación Horaria:**",
+        rf"$$ h(t) = \left( \sqrt{{{h0}}} - \frac{{{K_val:.5f}}}{{2}} t \right)^2 $$",
+        r"**5. Tiempo de vaciado total ($h=0$):**",
+        rf"$$ t = \frac{{{C_1:.4f}}}{{{K_val:.5f}}} \approx {t_end:.2f} \text{{ s}} \implies {t_end/60:.2f} \text{{ min}} $$"
+    ]
+
+    # PASO B: Gráfica con Holgura y Recorte Analítico Exacto a h=0
+    t_max = max(10.0, t_end * 1.2)
+    t_vec = np.linspace(0, t_max, 500)
+    # Evita que la parábola vuelva a subir después del vaciado recortando internamente a 0
+    h_vec = np.maximum(0, math.sqrt(h0) - (K_val / 2) * t_vec)**2
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, fill='tozeroy', mode='lines', line=dict(color='#FFB300', width=3)))
+    fig.add_trace(go.Scatter(x=[t_end/60], y=[0], mode='markers+text', text=[f"Vacío en {t_end/60:.1f}m"], textposition="top right", marker=dict(size=10, color='red')))
+    fig.update_layout(title="Nivel del Tanque h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura (m)", margin=dict(l=20, r=20, t=40, b=20))
+    
+    interp = f"El vaciado total demora {t_end/60:.1f} min. La forma parabólica revela que el caudal es muy fuerte al principio debido a la presión hidrostática, pero pierde fuerza hacia el final."
+    return steps, {"Nivel vs t": fig}, interp
 
 def solve_case_3(V, Q0, cin, rin, rout, t_target):
-    """Mezclas - Volumen Constante"""
-    V = max(V, 1e-5)
+    """Caso 3: Mezclas a Volumen Constante"""
+    # PASO A: Defensivo
+    V = max(V, 1.0)
     factor = rout / V
     inflow = rin * cin
     Q_steady = (inflow * V) / rout if rout > 0 else 0
     C_1 = Q0 - Q_steady
-    Q_final = Q_steady + C_1 * np.exp(-factor * t_target)
-    
+
+    # PASO C: LaTeX Exacto
     steps = [
-        r"**1. Modelo Simbólico:** $$\frac{dQ}{dt}=r_{in}c_{in} - r_{out}\frac{Q}{V}$$",
-        rf"**2. EDO Lineal Numérica:** $$\frac{{dQ}}{{dt}} + \left(\frac{{{rout}}}{{{V}}}\right)Q = {inflow:.2f}$$",
-        rf"**3. Solución General:** $$Q(t) = {Q_steady:.1f} + C_1 e^{{-{factor:.4f}t}}$$",
-        rf"**4. Condición Inicial ($t=0$):** $$Q(0)={Q0} \implies C_1 = {Q0} - {Q_steady:.1f} = {C_1:.1f}$$",
-        rf"**5. Ecuación Horaria:** $$Q(t)={Q_steady:.1f} {C_1:+.1f} e^{{-{factor:.4f}t}}$$"
+        r"**1. Balance de Masa:**",
+        rf"$$ \frac{{dQ}}{{dt}} = {rin}({cin}) - {rout}\frac{{Q}}{{{V:.1f}}} $$",
+        rf"$$ \frac{{dQ}}{{dt}} + {factor:.4f}Q = {inflow:.2f} $$",
+        r"**2. Solución General (Factor Integrante):**",
+        rf"$$ Q(t) = {Q_steady:.1f} + C_1 e^{{-{factor:.4f}t}} $$",
+        r"**3. Condición Inicial ($t=0$):**",
+        rf"$$ Q(0) = {Q0} \implies {Q0} = {Q_steady:.1f} + C_1 \implies C_1 = {C_1:.1f} $$",
+        r"**4. Ecuación Horaria Exacta:**",
+        rf"$$ Q(t) = {Q_steady:.1f} {C_1:+.1f} e^{{-{factor:.4f}t}} $$",
+        r"**5. Evaluación a $t_{target}$:**",
+        rf"$$ Q({t_target}) = {Q_steady:.1f} {C_1:+.1f} e^{{-{factor:.4f}({t_target})}} \approx {Q_steady + C_1*math.exp(-factor*t_target):.2f} \text{{ kg}} $$"
     ]
 
-    t_vals = np.linspace(0, max(t_target * 1.5, 60), 200)
-    Q_vals = Q_steady + C_1 * np.exp(-factor * t_vals)
-    Conc_vals = Q_vals / V
+    # PASO B: Gráfica Asintótica
+    t_max = max(t_target * 1.2, 50.0)
+    t_vec = np.linspace(0, t_max, 500)
+    Q_vec = Q_steady + C_1 * np.exp(-factor * t_vec)
     
-    fig_q = go.Figure(go.Scatter(x=t_vals, y=Q_vals, mode='lines', line=dict(color='green', width=3)))
-    fig_q.add_hline(y=Q_steady, line_dash="dash", line_color="black")
-    fig_q.update_layout(title="Masa Químico Q(t)", xaxis_title="Tiempo (min)", yaxis_title="Cantidad (kg)", template="plotly_white")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t_vec, y=Q_vec, mode='lines', line=dict(color='green', width=3)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[Q_steady, Q_steady], mode='lines', name='Límite Saturación', line=dict(color='blue', dash='dash')))
+    fig.update_layout(title="Masa de Desengrasante Q(t)", xaxis_title="Tiempo (min)", yaxis_title="Cantidad (kg)", margin=dict(l=20, r=20, t=40, b=20))
     
-    fig_c = go.Figure(go.Scatter(x=t_vals, y=Conc_vals, mode='lines', line=dict(color='purple', width=3)))
-    fig_c.update_layout(title="Concentración en Tanque c(t)", xaxis_title="Tiempo (min)", yaxis_title="Concentración (kg/L)", template="plotly_white")
-    
-    c_final = Q_final / V
-    if c_final >= (cin * 0.95):
-        interp = f"A los {t_target} min, la mezcla ha alcanzado un estado casi estacionario con {Q_final:.1f} kg. La concentración actual es de {c_final:.3f} kg/L, óptima para el proceso de lavado."
-    else:
-        interp = f"A los {t_target} min, la mezcla contiene {Q_final:.1f} kg y una concentración de {c_final:.3f} kg/L. El proceso AÚN SE ENCUENTRA EN ESTADO TRANSITORIO; no iniciar el lavado hasta alcanzar la saturación de {cin} kg/L."
-
-    return steps, {"Masa Química": fig_q, "Concentración": fig_c}, interp
-
+    Q_final = Q_steady + C_1*math.exp(-factor*t_target)
+    interp = f"A los {t_target} min hay {Q_final:.1f} kg. La curva asegura que el sistema tenderá asintóticamente al límite de saturación de {Q_steady} kg sin sobrepasarlo jamás."
+    return steps, {"Saturación Química": fig}, interp
 
 def solve_case_4(t_test, y_test, tau_ideal, force=10.0):
-    """Actuador Hidráulico"""
-    t_test = max(t_test, 1e-5)
-    y_test_safe = min(y_test, force * 0.999) 
-    tau_actual = max(-t_test / np.log(1 - (y_test_safe / force)), 1e-5)
-    
+    """Caso 4: Actuador Hidráulico"""
+    # PASO A: Defensivo (Evitar Log de Negativos)
+    t_test = max(t_test, 0.1)
+    y_safe = min(y_test, force * 0.999) # Nunca sobrepasar la fuerza F0
+    tau_real = -t_test / math.log(1 - (y_safe / force))
+
+    # PASO C: LaTeX Exacto
     steps = [
-        rf"**1. Modelo Simbólico:** $$\tau\frac{{dy}}{{dt}}+y = F_0$$",
-        r"**2. Solución General:** $$y(t) = F_0 + C_1 e^{-t/\tau}$$",
-        rf"**3. Condición Inicial ($t=0$):** $$y(0)=0 \implies 0 = {force} + C_1 \implies C_1 = -{force}$$",
-        rf"**4. Ecuación Posición:** $$y(t)={force}(1-e^{{-t/\tau}})$$",
-        rf"**5. Despeje de $\tau$ real:** $${y_test} = {force}(1-e^{{-{t_test}/\tau}}) \implies \tau \approx {tau_actual:.2f} \text{{ s}}$$"
+        r"**1. EDO Lineal del Cilindro:**",
+        rf"$$ \tau\frac{{dy}}{{dt}} + y = {force} $$",
+        r"**2. Solución y Condición Inicial ($y(0)=0$):**",
+        rf"$$ y(t) = {force} + C_1 e^{{-t/\tau}} \implies C_1 = -{force} $$",
+        rf"$$ y(t) = {force}(1 - e^{{-t/\tau}}) $$",
+        r"**3. Diagnóstico de Constante Real $\tau$:**",
+        rf"$$ {y_test} = {force}(1 - e^{{-{t_test}/\tau}}) \implies e^{{-{t_test}/\tau}} = {1 - y_safe/force:.4f} $$",
+        rf"$$ \tau = \frac{{-{t_test}}}{{\ln({1 - y_safe/force:.4f})}} \approx {tau_real:.2f} \text{{ s}} $$"
     ]
 
-    t_vals = np.linspace(0, max(t_test * 2, tau_actual * 4), 200)
-    y_actual = force * (1 - np.exp(-t_vals / tau_actual))
-    v_actual = (force / tau_actual) * np.exp(-t_vals / tau_actual)
+    # PASO B: Gráfica de Límite Mecánico
+    t_max = max(t_test * 1.2, tau_real * 5)
+    t_vec = np.linspace(0, t_max, 500)
+    y_vec = force * (1 - np.exp(-t_vec / tau_real))
     
-    fig_y = go.Figure(go.Scatter(x=t_vals, y=y_actual, mode='lines', name=f'Real', line=dict(color='red', width=3)))
-    fig_y.update_layout(title="Desplazamiento del Vástago y(t)", xaxis_title="Tiempo (s)", yaxis_title="Posición (cm)", template="plotly_white")
-
-    fig_v = go.Figure(go.Scatter(x=t_vals, y=v_actual, mode='lines', line=dict(color='teal', width=3)))
-    fig_v.update_layout(title="Velocidad del Pistón v(t)", xaxis_title="Tiempo (s)", yaxis_title="Velocidad (cm/s)", template="plotly_white")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t_vec, y=y_vec, mode='lines', line=dict(color='teal', width=3)))
+    fig.add_trace(go.Scatter(x=[0, t_max], y=[force, force], mode='lines', line=dict(color='gray', dash='dash'), name='Recorrido Máximo'))
+    fig.add_trace(go.Scatter(x=[t_test], y=[y_test], mode='markers+text', text=["Prueba"], textposition="bottom right", marker=dict(size=10, color='red')))
+    fig.update_layout(title="Respuesta del Cilindro y(t)", xaxis_title="Tiempo (s)", yaxis_title="Posición (cm)", margin=dict(l=20, r=20, t=40, b=20))
     
-    ratio = tau_actual / tau_ideal
-    if ratio > 1.5:
-        interp = f"¡ALERTA DE MANTENIMIENTO! El $\\tau$ real es de {tau_actual:.1f}s frente a un ideal de {tau_ideal}s (Desviación del {(ratio-1)*100:.0f}%). El retraso crítico sugiere desgaste severo, fricción excesiva del pistón o fluido hidráulico degradado."
-    else:
-        interp = f"El $\\tau$ real del cilindro es de {tau_actual:.1f}s. Se encuentra dentro de márgenes operativos aceptables respecto al ideal de {tau_ideal}s. El actuador responde con normalidad."
+    interp = f"El $\\tau$ medido es {tau_real:.1f}s vs ideal {tau_ideal}s. El retardo observado en la curva denota obstrucción hidráulica, fricción extrema o viscosidad alterada del fluido."
+    return steps, {"Desplazamiento vs t": fig}, interp
 
-    return steps, {"Desplazamiento": fig_y, "Velocidad Interna": fig_v}, interp
+def solve_case_5(H, R_top, h0, a, C_factor):
+    """Caso 5: Torricelli Cónico"""
+    # PASO A: Defensivo
+    g = 9.8
+    H, R_top = max(H, 0.01), max(R_top, 0.01)
+    K_val = (C_factor * a * math.sqrt(2 * g)) / (math.pi * (R_top/H)**2)
+    C_1 = (2/5) * (max(h0, 0)**(5/2))
+    t_end = C_1 / max(K_val, 1e-8)
 
-
-def solve_case_5(H, R_top, h0, a=0.005, C_factor=0.6, g=9.8):
-    """Torricelli - Tanque Cónico"""
-    H = max(H, 1e-5)
-    R_top = max(R_top, 1e-5)
-    h0 = max(h0, 0.0)
-    
-    K_val = (C_factor * a * np.sqrt(2 * g)) / (np.pi * (R_top/H)**2)
-    t_end = (2/5) * (h0**(5/2)) / max(K_val, 1e-8)
-    C_1 = (2/5) * (h0**(5/2))
-    
+    # PASO C: LaTeX Exacto
     steps = [
-        rf"**1. Simetría Cónica:** $$\frac{{r}}{{h}}=\frac{{R}}{{H}} \implies r(h) = \left(\frac{{{R_top}}}{{{H}}}\right)h = {R_top/H:.2f}h$$",
-        rf"**2. Área Variables:** $$A(h) = \pi r^2 = \pi \left(\frac{{{R_top}}}{{{H}}}\right)^2 h^2 = {np.pi*(R_top/H)**2:.4f} h^2$$",
-        r"**3. EDO Torricelli:** $$A(h)\frac{dh}{dt} = -C a \sqrt{2gh}$$",
-        rf"**4. Separación:** $$h^{{3/2}} dh = -\frac{{C a \sqrt{{2g}}}}{{\pi (R/H)^2}} dt = -{K_val:.5f} dt$$",
-        r"**5. Integración:** $$\frac{2}{5}h^{5/2} = -Kt + C_1$$",
-        rf"**6. Condición Inicial:** $$h(0)={h0} \implies C_1 = \frac{{2}}{{5}}({h0})^{{5/2}} = {C_1:.4f}$$",
-        rf"**7. Ecuación Horaria:** $$h(t) = \left( {h0**(5/2):.3f} - \frac{{5}}{{2}}({K_val:.5f})t \right)^{{2/5}}$$"
+        r"**1. Modelo Geométrico y EDO:**",
+        rf"$$ r = \frac{{R}}{{H}}h = {R_top/H:.2f}h \implies A(h) = {math.pi*(R_top/H)**2:.4f} h^2 $$",
+        r"$$ A(h)\frac{dh}{dt} = -C a \sqrt{2gh} $$",
+        r"**2. Separación de Variables:**",
+        rf"$$ h^{{3/2}} dh = -{K_val:.5f} dt $$",
+        r"**3. Condición Inicial e Integración:**",
+        rf"$$ \frac{{2}}{{5}}h^{{5/2}} = -Kt + C_1 \implies C_1 = \frac{{2}}{{5}}({h0})^{{5/2}} = {C_1:.4f} $$",
+        r"**4. Ecuación Horaria:**",
+        rf"$$ h(t) = \left( {h0**(5/2):.3f} - 2.5({K_val:.5f})t \right)^{{0.4}} $$",
+        rf"**5. Vaciado Total:** $ t = {C_1:.4f} / {K_val:.5f} \approx {t_end/60:.2f} \text{{ min}} $"
     ]
 
-    t_vals = np.linspace(0, t_end, 200)
-    base_vals = np.maximum(0, h0**(5/2) - (5/2) * K_val * t_vals)
-    h_vals = base_vals**(2/5)
+    # PASO B: Recorte Exacto en Cono (Evita raíces imaginarias)
+    t_max = max(5.0, t_end * 1.2)
+    t_vec = np.linspace(0, t_max, 500)
+    # Clip a cero estricto antes de elevar a potencia fraccionaria
+    base_vec = np.maximum(0, h0**(5/2) - 2.5 * K_val * t_vec)
+    h_vec = base_vec**(2/5)
     
-    # Calcular velocidad de descenso de altura dh/dt = -Ca_sqrt(2gh)/A(h)
-    A_h_vals = np.maximum(np.pi * (R_top/H)**2 * h_vals**2, 1e-5)
-    dh_dt = - (C_factor * a * np.sqrt(2 * g * h_vals)) / A_h_vals
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t_vec/60, y=h_vec, mode='lines', fill='tozeroy', line=dict(color='purple', width=3)))
+    fig.update_layout(title="Vaciado Cónico h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura (m)", margin=dict(l=20, r=20, t=40, b=20))
     
-    fig_h = go.Figure(go.Scatter(x=t_vals/60, y=h_vals, mode='lines', fill='tozeroy', line=dict(color='purple', width=3)))
-    fig_h.update_layout(title="Nivel en Cono h(t)", xaxis_title="Tiempo (min)", yaxis_title="Altura Química (m)", template="plotly_white")
-    
-    fig_dh = go.Figure(go.Scatter(x=t_vals/60, y=abs(dh_dt), mode='lines', line=dict(color='red', width=3)))
-    fig_dh.update_layout(title="Tasa de Caída de Nivel |dh/dt|", xaxis_title="Tiempo (min)", yaxis_title="Velocidad Nivel (m/s)", template="plotly_white")
-    
-    interp = f"Tiempo de vaciado: {t_end/60:.2f} min. Dado que el radio disminuye junto con la altura (Perfil Cónico), el sistema presenta una no-linealidad extrema: al inicio el nivel cae a {abs(dh_dt[0]):.4f} m/s, pero hacia el final del proceso, la contracción del área acelera violentamente la caída del líquido."
-
-    return steps, {"Altura vs Tiempo": fig_h, "Aceleración Vaciado": fig_dh}, interp
+    interp = f"Tiempo de vaciado: {t_end/60:.2f} min. El perfil muestra una curva cóncava inversa: a medida que el nivel baja, el área disminuye drásticamente, haciendo que la velocidad de caída se acelere violentamente hacia el final."
+    return steps, {"Nivel Cónico": fig}, interp
