@@ -112,6 +112,18 @@ st.markdown(
     div[data-testid="stSelectbox"] {
         margin-bottom: 0.2rem;
     }
+
+    div[data-testid="stExpander"] {
+        background-color: #FFFFFF;
+        border: 1px solid #D8E1E8;
+        border-radius: 10px;
+        box-shadow: none;
+    }
+
+    div[data-testid="stExpander"] summary {
+        font-size: 15px;
+        font-weight: 600;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -177,7 +189,7 @@ def graph_interpretation(case_id):
     return "La gráfica representa el comportamiento del modelo diferencial seleccionado."
 
 
-def extract_results(case_id, values, interpretation):
+def extract_results(case_id, values):
     if case_id == 1:
         return [
             ("Temperatura inicial", f"{values['T0']:.2f} °C"),
@@ -297,7 +309,7 @@ with left_col:
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.markdown("## Resultados principales")
 
-    result_items = extract_results(selected_case, values, interpretation)
+    result_items = extract_results(selected_case, values)
     kpi_cols = st.columns(3)
 
     for col, item in zip(kpi_cols, result_items):
@@ -315,8 +327,11 @@ with left_col:
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.markdown("## Cálculos ordenados")
-    render_steps(steps)
+    st.markdown("## Procedimiento matemático")
+
+    with st.expander("Ver procedimiento detallado", expanded=False):
+        render_steps(steps)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 
