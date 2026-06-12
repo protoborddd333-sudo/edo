@@ -48,8 +48,8 @@ st.markdown(
 
     h3 {
         font-size: 18px !important;
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.3rem !important;
+        margin-top: 0.25rem !important;
+        margin-bottom: 0.25rem !important;
     }
 
     p {
@@ -153,6 +153,171 @@ def render_steps(steps):
 
         else:
             st.markdown(clean)
+
+
+def render_detailed_procedure(case_id, values, steps):
+    if case_id == 1:
+        st.markdown("### 1. Modelo de la EDO")
+        st.latex(r"\frac{dT}{dt}=-k(T-T_a)")
+
+        st.markdown("### 2. Separación de variables")
+        st.latex(r"\frac{dT}{T-T_a}=-k\,dt")
+
+        st.markdown("### 3. Integración")
+        st.latex(r"\int \frac{dT}{T-T_a}=\int -k\,dt")
+        st.latex(r"\ln|T-T_a|=-kt+C")
+
+        st.markdown("### 4. Solución general")
+        st.latex(r"T(t)=T_a+C_1e^{-kt}")
+
+        st.markdown("### 5. Condición inicial")
+        st.latex(rf"T(0)={values['T0']:.2f}")
+        st.latex(rf"{values['T0']:.2f}={values['Ta']:.2f}+C_1")
+        st.latex(rf"C_1={values['T0']-values['Ta']:.2f}")
+
+        st.markdown("### 6. Ecuación del modelo")
+        st.latex(rf"T(t)={values['Ta']:.2f}+{values['T0']-values['Ta']:.2f}e^{{-kt}}")
+
+        st.markdown("### 7. Cálculo de la constante k")
+        st.latex(rf"{values['T1']:.2f}={values['Ta']:.2f}+{values['T0']-values['Ta']:.2f}e^{{-{values['t1']:.2f}k}}")
+        st.latex(rf"{values['T1']-values['Ta']:.2f}={values['T0']-values['Ta']:.2f}e^{{-{values['t1']:.2f}k}}")
+        st.latex(rf"\frac{{{values['T1']-values['Ta']:.2f}}}{{{values['T0']-values['Ta']:.2f}}}=e^{{-{values['t1']:.2f}k}}")
+        st.latex(rf"\ln\left(\frac{{{values['T1']-values['Ta']:.2f}}}{{{values['T0']-values['Ta']:.2f}}}\right)=-{values['t1']:.2f}k")
+        st.latex(rf"k=-\frac{{\ln\left(\frac{{{values['T1']-values['Ta']:.2f}}}{{{values['T0']-values['Ta']:.2f}}}\right)}}{{{values['t1']:.2f}}}")
+
+        st.markdown("### 8. Tiempo para alcanzar la temperatura objetivo")
+        st.latex(rf"{values['T_obj']:.2f}={values['Ta']:.2f}+{values['T0']-values['Ta']:.2f}e^{{-kt}}")
+        st.latex(rf"{values['T_obj']-values['Ta']:.2f}={values['T0']-values['Ta']:.2f}e^{{-kt}}")
+        st.latex(rf"\frac{{{values['T_obj']-values['Ta']:.2f}}}{{{values['T0']-values['Ta']:.2f}}}=e^{{-kt}}")
+        st.latex(rf"t=\frac{{-\ln\left(\frac{{{values['T_obj']-values['Ta']:.2f}}}{{{values['T0']-values['Ta']:.2f}}}\right)}}{{k}}")
+
+        st.markdown("### 9. Resultado final")
+        render_steps(steps)
+
+    elif case_id == 2:
+        st.markdown("### 1. Modelo de Torricelli")
+        st.latex(r"A\frac{dh}{dt}=-Ca\sqrt{2gh}")
+
+        st.markdown("### 2. Área del tanque cilíndrico")
+        st.latex(r"A=\pi r^2")
+        st.latex(rf"A=\pi({values['r']:.2f})^2")
+
+        st.markdown("### 3. Sustitución en el modelo")
+        st.latex(rf"\pi({values['r']:.2f})^2\frac{{dh}}{{dt}}=-({values['C_factor']:.2f})({values['a']:.6f})\sqrt{{2({values['g']:.2f})h}}")
+
+        st.markdown("### 4. Separación de variables")
+        st.latex(r"\frac{dh}{\sqrt{h}}=-\frac{Ca\sqrt{2g}}{A}dt")
+        st.latex(r"\frac{dh}{\sqrt{h}}=-Kdt")
+
+        st.markdown("### 5. Integración")
+        st.latex(r"\int h^{-1/2}dh=-K\int dt")
+        st.latex(r"2\sqrt{h}=-Kt+C_1")
+
+        st.markdown("### 6. Condición inicial")
+        st.latex(rf"h(0)={values['h0']:.2f}")
+        st.latex(rf"2\sqrt{{{values['h0']:.2f}}}=C_1")
+        st.latex(rf"C_1=2\sqrt{{{values['h0']:.2f}}}")
+
+        st.markdown("### 7. Tiempo de vaciado")
+        st.latex(r"h=0")
+        st.latex(r"0=-Kt+C_1")
+        st.latex(r"t=\frac{C_1}{K}")
+
+        st.markdown("### 8. Resultado final")
+        render_steps(steps)
+
+    elif case_id == 3:
+        st.markdown("### 1. Balance de masa")
+        st.latex(r"\frac{dQ}{dt}=\text{entrada}-\text{salida}")
+
+        st.markdown("### 2. Tasa de entrada")
+        st.latex(r"\text{entrada}=r_{in}c_{in}")
+        st.latex(rf"\text{{entrada}}=({values['rin']:.2f})({values['cin']:.2f})")
+
+        st.markdown("### 3. Tasa de salida")
+        st.latex(r"\text{salida}=r_{out}\frac{Q}{V}")
+        st.latex(rf"\text{{salida}}={values['rout']:.2f}\frac{{Q}}{{{values['V']:.2f}}}")
+
+        st.markdown("### 4. Modelo diferencial")
+        st.latex(r"\frac{dQ}{dt}=r_{in}c_{in}-r_{out}\frac{Q}{V}")
+        st.latex(rf"\frac{{dQ}}{{dt}}={values['rin']:.2f}({values['cin']:.2f})-{values['rout']:.2f}\frac{{Q}}{{{values['V']:.2f}}}")
+
+        st.markdown("### 5. Forma lineal")
+        st.latex(r"\frac{dQ}{dt}+aQ=b")
+        st.latex(rf"a=\frac{{{values['rout']:.2f}}}{{{values['V']:.2f}}}")
+        st.latex(rf"b=({values['rin']:.2f})({values['cin']:.2f})")
+
+        st.markdown("### 6. Solución general")
+        st.latex(r"Q(t)=Q_s+C_1e^{-at}")
+        st.latex(r"Q_s=\frac{b}{a}")
+
+        st.markdown("### 7. Condición inicial")
+        st.latex(rf"Q(0)={values['Q0']:.2f}")
+
+        st.markdown("### 8. Evaluación en el tiempo pedido")
+        st.latex(rf"Q({values['t_target']:.2f})=Q_s+C_1e^{{-a({values['t_target']:.2f})}}")
+
+        st.markdown("### 9. Resultado final")
+        render_steps(steps)
+
+    elif case_id == 4:
+        st.markdown("### 1. Modelo del actuador")
+        st.latex(r"\tau\frac{dy}{dt}+y=10")
+
+        st.markdown("### 2. Despeje de la EDO")
+        st.latex(r"\tau\frac{dy}{dt}=10-y")
+        st.latex(r"\frac{dy}{dt}=\frac{10-y}{\tau}")
+
+        st.markdown("### 3. Solución general")
+        st.latex(r"y(t)=10+C_1e^{-t/\tau}")
+
+        st.markdown("### 4. Condición inicial")
+        st.latex(r"y(0)=0")
+        st.latex(r"0=10+C_1")
+        st.latex(r"C_1=-10")
+
+        st.markdown("### 5. Función de posición")
+        st.latex(r"y(t)=10(1-e^{-t/\tau})")
+
+        st.markdown("### 6. Cálculo de tau real")
+        st.latex(rf"{values['y_test']:.2f}=10(1-e^{{-{values['t_test']:.2f}/\tau}})")
+        st.latex(rf"\frac{{{values['y_test']:.2f}}}{{10}}=1-e^{{-{values['t_test']:.2f}/\tau}}")
+        st.latex(rf"e^{{-{values['t_test']:.2f}/\tau}}=1-\frac{{{values['y_test']:.2f}}}{{10}}")
+        st.latex(rf"\ln\left(1-\frac{{{values['y_test']:.2f}}}{{10}}\right)=-\frac{{{values['t_test']:.2f}}}{{\tau}}")
+        st.latex(rf"\tau=\frac{{-{values['t_test']:.2f}}}{{\ln\left(1-\frac{{{values['y_test']:.2f}}}{{10}}\right)}}")
+
+        st.markdown("### 7. Resultado final")
+        render_steps(steps)
+
+    else:
+        st.markdown("### 1. Relación geométrica del cono")
+        st.latex(r"\frac{r}{h}=\frac{R}{H}")
+
+        st.markdown("### 2. Radio en función de la altura")
+        st.latex(r"r=\frac{R}{H}h")
+        st.latex(rf"r=\frac{{{values['R_top']:.2f}}}{{{values['H']:.2f}}}h")
+
+        st.markdown("### 3. Área variable")
+        st.latex(r"A(h)=\pi r^2")
+        st.latex(r"A(h)=\pi\left(\frac{R}{H}h\right)^2")
+        st.latex(r"A(h)=\pi\left(\frac{R}{H}\right)^2h^2")
+
+        st.markdown("### 4. Ley de Torricelli")
+        st.latex(r"A(h)\frac{dh}{dt}=-Ca\sqrt{2gh}")
+
+        st.markdown("### 5. Sustitución del área")
+        st.latex(r"\pi\left(\frac{R}{H}\right)^2h^2\frac{dh}{dt}=-Ca\sqrt{2gh}")
+
+        st.markdown("### 6. Separación de variables")
+        st.latex(r"h^2\frac{dh}{dt}=-\frac{Ca\sqrt{2g}}{\pi(R/H)^2}h^{1/2}")
+        st.latex(r"h^{3/2}dh=-Kdt")
+
+        st.markdown("### 7. Integración")
+        st.latex(r"\int h^{3/2}dh=\int -Kdt")
+        st.latex(r"\frac{2}{5}h^{5/2}=-Kt+C_1")
+
+        st.markdown("### 8. Resultado final")
+        render_steps(steps)
 
 
 def graph_interpretation(case_id):
@@ -330,7 +495,7 @@ with left_col:
     st.markdown("## Procedimiento matemático")
 
     with st.expander("Ver procedimiento detallado", expanded=False):
-        render_steps(steps)
+        render_detailed_procedure(selected_case, values, steps)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
