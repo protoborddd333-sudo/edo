@@ -19,75 +19,108 @@ st.markdown(
     }
 
     .stApp {
-        background-color: #00A3E0;
-    }
-
-    section[data-testid="stSidebar"] {
-        background-color: #EAF7FC;
-        border-right: 1px solid #BDE7F5;
+        background: linear-gradient(135deg, #EAF7FC 0%, #F7FAFC 45%, #EEF2F6 100%);
     }
 
     .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 1.2rem;
         max-width: 1180px;
     }
 
+    section[data-testid="stSidebar"] {
+        background-color: #EEF6FA;
+        border-right: 1px solid #D5E4EC;
+        box-shadow: 2px 0px 10px rgba(15, 23, 42, 0.05);
+    }
+
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #1F2937;
+        font-weight: bold;
+    }
+
+    section[data-testid="stSidebar"] label {
+        color: #334155;
+        font-size: 14px;
+    }
+
     .top-panel {
-        background-color: #EAF7FC;
+        background: rgba(255, 255, 255, 0.92);
         padding: 0.75rem 1rem;
-        border-radius: 12px;
-        border: 1px solid #BDE7F5;
-        margin-bottom: 0.8rem;
+        border-radius: 16px;
+        border: 1px solid #D7E7EF;
+        box-shadow: 0px 4px 14px rgba(15, 23, 42, 0.08);
+        margin-bottom: 0.9rem;
     }
 
     .header-title {
-        font-size: 25px;
+        font-size: 24px;
         font-weight: bold;
-        color: black;
-        margin-bottom: 0px;
+        color: #111827;
+        margin-bottom: 2px;
         line-height: 1.15;
     }
 
     .header-subtitle {
         font-size: 14px;
-        color: #1F2937;
+        color: #475569;
         margin-top: 2px;
     }
 
     .main-card {
-        background-color: #FFFFFF;
-        padding: 0.9rem;
-        border-radius: 10px;
-        border: 1px solid #CDEAF5;
-        box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
-        margin-bottom: 0.7rem;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid #D7E7EF;
+        box-shadow: 0px 4px 14px rgba(15, 23, 42, 0.07);
+        margin-bottom: 0.9rem;
     }
 
     .metric-card {
-        background-color: #EAF7FC;
-        padding: 0.55rem;
-        border-radius: 9px;
-        border: 1px solid #BDE7F5;
+        background: linear-gradient(180deg, #F8FCFE 0%, #EAF7FC 100%);
+        padding: 0.75rem;
+        border-radius: 14px;
+        border: 1px solid #CFE3ED;
         text-align: center;
+        box-shadow: 0px 3px 10px rgba(15, 23, 42, 0.06);
     }
 
     .metric-title {
-        font-size: 12px;
-        color: #475569;
+        font-size: 12.5px;
+        color: #64748B;
+        margin-bottom: 4px;
     }
 
     .metric-value {
-        font-size: 17px;
+        font-size: 18px;
         font-weight: bold;
-        color: black;
+        color: #111827;
     }
 
-    .footer {
-        text-align: center;
-        color: white;
-        font-size: 13px;
-        padding-top: 0.5rem;
+    div[data-testid="stSelectbox"] {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+    }
+
+    div[data-testid="stNumberInput"] input {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        border: 1px solid #CBDDE7;
+        color: #111827;
+    }
+
+    div[data-testid="stPlotlyChart"] {
+        background-color: #FFFFFF;
+        border-radius: 14px;
+        padding: 0.4rem;
+        border: 1px solid #E2E8F0;
+    }
+
+    div[data-testid="stAlert"] {
+        border-radius: 12px;
+        border: 1px solid #D7E7EF;
     }
 
     h1, h2, h3, h4, h5, h6, p, label, div, span {
@@ -95,11 +128,28 @@ st.markdown(
     }
 
     h2 {
-        font-size: 24px !important;
+        font-size: 23px !important;
+        color: #111827;
+        font-weight: bold;
     }
 
     h3 {
-        font-size: 19px !important;
+        font-size: 18px !important;
+        color: #1F2937;
+        font-weight: bold;
+    }
+
+    .footer {
+        text-align: center;
+        color: #475569;
+        font-size: 13px;
+        padding-top: 0.6rem;
+        padding-bottom: 0.2rem;
+    }
+
+    hr {
+        border: none;
+        border-top: 1px solid #D7E7EF;
     }
     </style>
     """,
@@ -291,7 +341,15 @@ with right_col:
     st.subheader("Gráfica del modelo")
 
     for _, fig in figures.items():
-        fig.update_layout(height=430)
+        fig.update_layout(
+            height=430,
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            font=dict(family="Times New Roman", size=13, color="#111827"),
+            margin=dict(l=35, r=25, t=45, b=35),
+        )
+        fig.update_xaxes(showgrid=True, gridcolor="#E5EEF3")
+        fig.update_yaxes(showgrid=True, gridcolor="#E5EEF3")
         st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Interpretación técnica")
