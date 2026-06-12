@@ -1,199 +1,282 @@
-import numpy as np
+# solver.py
+# Compatible con Python 3.12, Streamlit Cloud, NumPy y Plotly
+
 import math
+import numpy as np
 import plotly.graph_objects as go
 
-AXIS_STYLE = dict(gridcolor='#E2E8F0', color='#1E293B', zerolinecolor='#E2E8F0')
 
-def get_base_layout(title, x_title, y_title):
+def base_layout(title, x_title, y_title):
     return dict(
-        title=dict(text=title, font=dict(color='#00A8E1')), 
-        xaxis_title=x_title, 
-        yaxis_title=y_title, 
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor='#FFFFFF',
-        paper_bgcolor='#FFFFFF',
-        xaxis=AXIS_STYLE,
-        yaxis=AXIS_STYLE
+        title=title,
+        xaxis_title=x_title,
+        yaxis_title=y_title,
+        template="plotly_white",
+        margin=dict(l=40, r=40, t=60, b=40),
+        hovermode="x unified",
     )
 
-def solve_case_1(T0, Ta, T1, t1, T_obj):
-    if (T1 - Ta) > 0 and (T0 - Ta) > 0 and t1 > 0 and T0 != T1:
-        k = -math.log((T1 - Ta) / (T0 - Ta)) / t1
-        t_total = -math.log((T_obj - Ta) / (T0 - Ta)) / k if (T_obj - Ta) > 0 else 0
-        t_adicional = max(0, t_total - t1)
-    else:
-        k, t_total, t_adicional = 0.0001, 0.0, 0.0
+
+def safe_positive(value, default):
+    try:
+        value = float(value)
+        if value > 0:
+            return value
+        return default
+    except Exception:
+        return default
+
+
+# ==========================================================
+# CASO 1: ENFRIAMIENTO DE NEWTON
+# ==========================================================
+
+def solve_case_1(T0=150, Ta=25, T1=100, t1=10, T_obj=40):
+    T0 = safe_positive(T0, 150)
+    Ta = float(Ta)
+    T1 = float(T1)
+    t1 = safe_positive(t1, 10)
+    T_obj = float(T_obj)
+
+    if T0 <= Ta:
+        T0 = 150
+    if T1 <= Ta or T1 >= T0:
+        T1 = 100
+    if T_obj <= Ta or T_obj >= T0:
+        T_obj = 40
+
+    k = -math.log((T1 - Ta) / (T0 - Ta)) / t1
+    t_total = -math.log((T_obj - Ta) / (T0 - Ta)) / k
+    t_extra = max(0, t_total - t1)
 
     steps = [
-        r"**1. Modelo Matematico (Ley de Newton):**",
-        r"$$ \frac{dT}{dt} = -k(T - T_a) $$",
-        r"**2. Solucion Analitica General:**",
-        r"$$ T(t) = T_a + C_1 e^{-kt} $$",
-        r"**3. Evaluacion de Condicion Inicial (t = 0):**",
-        rf"$$ T(0) = T_0 \implies {T0:.1f} = {Ta:.1f} + C_1 $$",
-        rf"$$ \implies C_1 = {T0 - Ta:.1f} $$",
-        r"**4. Calculo de Constante de Decaimiento Termico (k):**",
-        rf"$$ k = -\frac{{\ln\left(\frac{{{T1:.1f} - {Ta:.1f}}}{{{T0:.1f} - {Ta:.1f}}}\right)}}{{{t1:.1f}}} $$",
-        rf"$$ \implies k \approx {k:.4f} $$",
-        r"**5. Ecuacion Horaria del Perfil Termico:**",
-        rf"$$ T(t) = {Ta:.1f} + {T0 - Ta:.1f} e^{{-{k:.4f}t}} $$",
-        r"**6. Tiempo proyectado para alcanzar la Temperatura Objetivo:**",
-        rf"$$ t = \frac{{-\ln\left(\frac{{{T_obj:.1f} - {Ta:.1f}}}{{{T0:.1f} - {Ta:.1f}}}\right)}}{{{k:.4f}}} $$",
-        rf"$$ \implies t \approx {t_total:.2f} \text{ unidades de tiempo} $$"
+        "### 1. Modelo de la EDO",
+        r"$$\frac{dT}{dt}=-k(T-T_a)$$",
+        "### 2. Solución general",
+        r"$$T(t)=T_a+(T_0-T_a)e^{-kt}$$",
+        "### 3. Cálculo de la constante k",
+        rf"$$k=-\frac{{\ln\left(\frac{{{T1:.2f}-{Ta:.2f}}}{{{T0:.2f}-{Ta:.2f}}}\right)}}{{{t1:.2f}}}={k:.5f}$$",
+        "### 4. Ecuación de temperatura",
+        rf"$$T(t)={Ta:.2f}+{T0-Ta:.2f}e^{{-{k:.5f}t}}$$",
+        "### 5. Tiempo para alcanzar la temperatura segura",
+        rf"$$t={t_total:.2f}\ \text{{min}}$$",
+        rf"$$t_{{adicional}}={t_extra:.2f}\ \text{{min}}$$",
     ]
 
-    t_max = max(10.0, t_total * 1.2)
-    t_vec = np.linspace(0, t_max, 500)
-    T_vec = Ta + (T0 - Ta) * np.exp(-k * t_vec)
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=T_vec, mode='lines', name='Temperatura', line=dict(color='#00A8E1', width=4)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[Ta, Ta], mode='lines', name='Asíntota (Medio)', line=dict(color='#94A3B8', dash='dash')))
-    fig.add_trace(go.Scatter(x=[t_total], y=[T_obj], mode='markers+text', name='Objetivo', text=[f"({t_total:.1f}, {T_obj})"], textposition="top right", marker=dict(size=12, color='#0A2540')))
-    fig.update_layout(**get_base_layout("Curva de Transferencia de Calor", "Tiempo", "Temperatura"))
-    
-    interp = f"Analisis: El objeto tomara un tiempo total de {t_total:.2f} para alcanzar los {T_obj} grados. Considerando que ya han transcurrido {t1} unidades de tiempo, se requiere un tiempo de espera adicional de {t_adicional:.2f}. La curva tiende asintoticamente al valor del medio ({Ta})."
-    return steps, {"Curva Termica": fig}, interp
+    t_max = max(t_total * 1.25, 50)
+    t = np.linspace(0, t_max, 400)
+    T = Ta + (T0 - Ta) * np.exp(-k * t)
 
-def solve_case_2(r, h0, a, C_factor):
-    g = 9.8
-    r = max(r, 0.001)
-    A0 = math.pi * r**2
-    K_val = (C_factor * a * math.sqrt(2 * g)) / A0 if A0 > 0 else 1e-5
-    t_end = 2 * math.sqrt(max(h0, 0)) / K_val
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t, y=T, mode="lines", name="Temperatura T(t)"))
+    fig.add_trace(go.Scatter(x=[t1], y=[T1], mode="markers+text", text=["Medición"], textposition="top right", name="Medición"))
+    fig.add_trace(go.Scatter(x=[t_total], y=[T_obj], mode="markers+text", text=["Punto seguro"], textposition="top right", name="Temperatura segura"))
+    fig.add_hline(y=Ta, line_dash="dash", annotation_text="Temperatura ambiente")
+    fig.update_layout(**base_layout("Caso 1: Enfriamiento de Newton", "Tiempo (min)", "Temperatura (°C)"))
+
+    interpretation = (
+        f"El rodamiento llega a {T_obj:.2f} °C a los {t_total:.2f} minutos. "
+        f"Como ya pasaron {t1:.2f} minutos, el técnico debe esperar {t_extra:.2f} minutos adicionales. "
+        "La curva baja rápido al inicio y luego se vuelve más lenta porque se aproxima a la temperatura ambiente."
+    )
+
+    return steps, {"Curva de enfriamiento": fig}, interpretation
+
+
+# ==========================================================
+# CASO 2: TORRICELLI TANQUE CILÍNDRICO
+# ==========================================================
+
+def solve_case_2(r=1, h0=4, a=0.005, C_factor=0.6, g=9.8):
+    r = safe_positive(r, 1)
+    h0 = safe_positive(h0, 4)
+    a = safe_positive(a, 0.005)
+    C_factor = safe_positive(C_factor, 0.6)
+    g = safe_positive(g, 9.8)
+
+    A = math.pi * r**2
+    K = (C_factor * a * math.sqrt(2 * g)) / A
+    C1 = 2 * math.sqrt(h0)
+    t_end = C1 / K
 
     steps = [
-        r"**1. Modelo Matematico (Ley de Torricelli):**",
-        r"$$ A_0\frac{dh}{dt} = -C a \sqrt{2gh} $$",
-        r"**2. Parametrizacion del Area Transversal:**",
-        rf"$$ A_0 = \pi({r:.2f})^2 = {A0:.4f} \text{ m}^2 $$",
-        rf"$$ K = \frac{{{C_factor} \cdot {a} \cdot \sqrt{{2 \cdot 9.8}}}}{{{A0:.4f}}} \approx {K_val:.5f} $$",
-        r"**3. Integracion Diferencial:**",
-        r"$$ \int h^{-1/2} dh = -K \int dt $$",
-        r"$$ \implies 2\sqrt{h} = -Kt + C_1 $$",
-        r"**4. Evaluacion de Condicion Inicial (t=0):**",
-        rf"$$ h(0) = {h0} \implies C_1 = 2\sqrt{{{h0}}} $$",
-        rf"$$ \implies C_1 = {2*math.sqrt(h0):.4f} $$",
-        r"**5. Ecuacion Horaria del Nivel de Fluido:**",
-        rf"$$ h(t) = \left( \sqrt{{{h0}}} - \frac{{{K_val:.5f}}}{{2}} t \right)^2 $$",
-        r"**6. Computo de Tiempo de Vaciado (h=0):**",
-        rf"$$ t = \frac{{{C_1:.4f}}}{{{K_val:.5f}}} \approx {t_end:.2f} \text{ segundos} $$"
+        "### 1. Modelo de Torricelli",
+        r"$$A\frac{dh}{dt}=-Ca\sqrt{2gh}$$",
+        "### 2. Área del tanque",
+        rf"$$A=\pi r^2=\pi({r:.2f})^2={A:.4f}\ m^2$$",
+        "### 3. Separación de variables",
+        r"$$\frac{dh}{\sqrt{h}}=-Kdt$$",
+        rf"$$K=\frac{{Ca\sqrt{{2g}}}}{{A}}={K:.6f}$$",
+        "### 4. Integración",
+        r"$$2\sqrt{h}=-Kt+C_1$$",
+        rf"$$C_1=2\sqrt{{{h0:.2f}}}={C1:.4f}$$",
+        "### 5. Tiempo de vaciado",
+        rf"$$t=\frac{{C_1}}{{K}}=\frac{{{C1:.4f}}}{{{K:.6f}}}={t_end:.2f}\ s$$",
+        rf"$$t={t_end/60:.2f}\ min$$",
     ]
 
-    t_max = max(10.0, t_end * 1.2)
-    t_vec = np.linspace(0, t_max, 500)
-    h_vec = np.maximum(0, math.sqrt(h0) - (K_val / 2) * t_vec)**2
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=h_vec, fill='tozeroy', mode='lines', line=dict(color='#00A8E1', width=4), fillcolor='rgba(0, 168, 225, 0.15)'))
-    fig.add_trace(go.Scatter(x=[t_end], y=[0], mode='markers+text', text=[f"Vaciado: {t_end:.1f}s"], textposition="top right", marker=dict(size=12, color='#0A2540')))
-    fig.update_layout(**get_base_layout("Descenso Hidrodinamico", "Tiempo (segundos)", "Altura (m)"))
-    
-    interp = f"Analisis: La evacuacion completa del fluido requiere {t_end:.2f} segundos (aprox {t_end/60:.2f} minutos). El grafico parabolico demuestra que la tasa de variacion (caudal de salida) es no lineal, siendo mayor al inicio debido a la presion de la columna de {h0} metros."
-    return steps, {"Nivel de Fluido": fig}, interp
+    t = np.linspace(0, t_end, 400)
+    h = np.maximum(0, np.sqrt(h0) - (K / 2) * t) ** 2
 
-def solve_case_3(V, Q0, cin, rin, rout, t_target):
-    V = max(V, 0.001)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t / 60, y=h, mode="lines", fill="tozeroy", name="Altura h(t)"))
+    fig.add_trace(go.Scatter(x=[t_end / 60], y=[0], mode="markers+text", text=["Vacío"], textposition="top right", name="Vaciado total"))
+    fig.update_layout(**base_layout("Caso 2: Vaciado de tanque cilíndrico", "Tiempo (min)", "Altura (m)"))
+
+    interpretation = (
+        f"El tanque se vacía en {t_end/60:.2f} minutos. "
+        "La altura no disminuye de forma lineal: al inicio baja más rápido por la mayor presión hidrostática."
+    )
+
+    return steps, {"Vaciado cilíndrico": fig}, interpretation
+
+
+# ==========================================================
+# CASO 3: MEZCLAS
+# ==========================================================
+
+def solve_case_3(V=500, Q0=0, cin=0.2, rin=5, rout=5, t_target=60):
+    V = safe_positive(V, 500)
+    Q0 = float(Q0)
+    cin = safe_positive(cin, 0.2)
+    rin = safe_positive(rin, 5)
+    rout = safe_positive(rout, 5)
+    t_target = safe_positive(t_target, 60)
+
     factor = rout / V
-    inflow = rin * cin
-    Q_steady = (inflow * V) / rout if rout > 0 else 0
-    C_1 = Q0 - Q_steady
+    entrada = rin * cin
+    Q_estable = (entrada * V) / rout
+    C1 = Q0 - Q_estable
+    Q_final = Q_estable + C1 * math.exp(-factor * t_target)
 
     steps = [
-        r"**1. Modelo Diferencial (Balance de Masa):**",
-        rf"$$ \frac{{dQ}}{{dt}} = (\text{Tasa Entrada}) - (\text{Tasa Salida}) $$",
-        rf"$$ \implies \frac{{dQ}}{{dt}} + {factor:.4f}Q = {inflow:.2f} $$",
-        r"**2. Solucion Analitica (Factor Integrante):**",
-        rf"$$ Q(t) = {Q_steady:.1f} + C_1 e^{{-{factor:.4f}t}} $$",
-        r"**3. Evaluacion de Condicion Inicial (t=0):**",
-        rf"$$ Q(0) = {Q0} \implies {Q0} = {Q_steady:.1f} + C_1 $$",
-        rf"$$ \implies C_1 = {C_1:.1f} $$",
-        r"**4. Ecuacion Horaria Exacta:**",
-        rf"$$ Q(t) = {Q_steady:.1f} {C_1:+.1f} e^{{-{factor:.4f}t}} $$",
-        r"**5. Proyeccion para el instante de evaluacion:**",
-        rf"$$ Q({t_target}) = {Q_steady:.1f} {C_1:+.1f} e^{{-{factor:.4f}({t_target})}} $$",
-        rf"$$ \implies Q({t_target}) \approx {Q_steady + C_1*math.exp(-factor*t_target):.2f} \text{ masa} $$"
+        "### 1. Balance de masa",
+        r"$$\frac{dQ}{dt}=r_{in}c_{in}-r_{out}\frac{Q}{V}$$",
+        "### 2. Sustitución de datos",
+        rf"$$\frac{{dQ}}{{dt}}={rin:.2f}({cin:.2f})-{rout:.2f}\frac{{Q}}{{{V:.2f}}}$$",
+        rf"$$\frac{{dQ}}{{dt}}+{factor:.5f}Q={entrada:.5f}$$",
+        "### 3. Solución general",
+        rf"$$Q(t)={Q_estable:.4f}+C_1e^{{-{factor:.5f}t}}$$",
+        "### 4. Condición inicial",
+        rf"$$Q(0)={Q0:.2f}\Rightarrow C_1={C1:.4f}$$",
+        "### 5. Evaluación",
+        rf"$$Q({t_target:.2f})={Q_final:.4f}\ kg$$",
     ]
 
-    t_max = max(t_target * 1.2, 50.0)
-    t_vec = np.linspace(0, t_max, 500)
-    Q_vec = Q_steady + C_1 * np.exp(-factor * t_vec)
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=Q_vec, mode='lines', name='Sustancia', line=dict(color='#00A8E1', width=4)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[Q_steady, Q_steady], mode='lines', name='Limite Teórico', line=dict(color='#94A3B8', dash='dash')))
-    fig.update_layout(**get_base_layout("Cinetica de Mezcla Homogenea", "Tiempo", "Masa disuelta"))
-    
-    Q_final = Q_steady + C_1*math.exp(-factor*t_target)
-    interp = f"Analisis: Evaluando el sistema a los {t_target} de tiempo, la cantidad contenida es de {Q_final:.2f}. El diseño del proceso asegura que, eventualmente, el estado estacionario alcanzara de forma natural un limite absoluto de {Q_steady:.2f}."
-    return steps, {"Cinética de Masa": fig}, interp
+    t_max = max(t_target * 1.4, 120)
+    t = np.linspace(0, t_max, 400)
+    Q = Q_estable + C1 * np.exp(-factor * t)
 
-def solve_case_4(t_test, y_test, tau_ideal, force):
-    t_test = max(t_test, 0.001)
-    y_safe = min(y_test, force * 0.999) 
-    tau_real = -t_test / math.log(1 - (y_safe / force)) if force > 0 else 0.001
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t, y=Q, mode="lines", name="Cantidad Q(t)"))
+    fig.add_trace(go.Scatter(x=[t_target], y=[Q_final], mode="markers+text", text=[f"{Q_final:.2f} kg"], textposition="top right", name="Resultado"))
+    fig.add_hline(y=Q_estable, line_dash="dash", annotation_text="Estado estacionario")
+    fig.update_layout(**base_layout("Caso 3: Mezcla de desengrasante", "Tiempo (min)", "Cantidad de desengrasante (kg)"))
+
+    interpretation = (
+        f"Después de {t_target:.2f} minutos hay {Q_final:.2f} kg de desengrasante. "
+        f"La curva se aproxima al estado estacionario de {Q_estable:.2f} kg."
+    )
+
+    return steps, {"Mezcla": fig}, interpretation
+
+
+# ==========================================================
+# CASO 4: ACTUADOR HIDRÁULICO
+# ==========================================================
+
+def solve_case_4(t_test=8, y_test=6.32, tau_ideal=4, recorrido=10):
+    t_test = safe_positive(t_test, 8)
+    recorrido = safe_positive(recorrido, 10)
+    tau_ideal = safe_positive(tau_ideal, 4)
+    y_test = float(y_test)
+
+    if y_test <= 0 or y_test >= recorrido:
+        y_test = 6.32
+
+    tau_real = -t_test / math.log(1 - y_test / recorrido)
 
     steps = [
-        r"**1. Modelo Lineal de Primer Orden:**",
-        rf"$$ \tau\frac{{dy}}{{dt}} + y = {force} $$",
-        r"**2. Solucion General:**",
-        rf"$$ y(t) = {force} + C_1 e^{{-t/\tau}} $$",
-        r"**3. Evaluacion de Sistema en Reposo (y(0)=0):**",
-        rf"$$ 0 = {force} + C_1 \implies C_1 = -{force} $$",
-        r"**4. Funcional de Posicion Transitoria:**",
-        rf"$$ y(t) = {force}\left(1 - e^{{-t/\tau}}\right) $$",
-        r"**5. Diagnostico del Parametro Tau:**",
-        rf"$$ {y_test} = {force}\left(1 - e^{{-{t_test}/\tau}}\right) $$",
-        rf"$$ \implies \tau = \frac{{-{t_test}}}{{\ln({1 - y_safe/force:.4f})}} $$",
-        rf"$$ \implies \tau \approx {tau_real:.2f} \text{ s} $$"
+        "### 1. Modelo del actuador",
+        rf"$$\tau\frac{{dy}}{{dt}}+y={recorrido:.2f}$$",
+        "### 2. Solución general",
+        rf"$$y(t)={recorrido:.2f}(1-e^{{-t/\tau}})$$",
+        "### 3. Cálculo de tau real",
+        rf"$$ {y_test:.2f}={recorrido:.2f}(1-e^{{-{t_test:.2f}/\tau}})$$",
+        rf"$$\tau={tau_real:.4f}\ s$$",
+        "### 4. Función de posición",
+        rf"$$y(t)={recorrido:.2f}(1-e^{{-t/{tau_real:.4f}}})$$",
     ]
 
-    t_max = max(t_test * 1.2, tau_real * 5)
-    t_vec = np.linspace(0, t_max, 500)
-    y_vec = force * (1 - np.exp(-t_vec / tau_real))
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=y_vec, mode='lines', name='y(t)', line=dict(color='#00A8E1', width=4)))
-    fig.add_trace(go.Scatter(x=[0, t_max], y=[force, force], mode='lines', line=dict(color='#94A3B8', dash='dash'), name='Limite Asintotico'))
-    fig.add_trace(go.Scatter(x=[t_test], y=[y_test], mode='markers+text', text=["Punto Test"], textposition="bottom right", marker=dict(size=12, color='#0A2540')))
-    fig.update_layout(**get_base_layout("Respuesta Dinamica de Planta", "Tiempo (s)", "Magnitud"))
-    
-    desviacion = abs(tau_real - tau_ideal) / tau_ideal * 100 if tau_ideal > 0 else 0
-    interp = f"Analisis: La constante de tiempo computada es {tau_real:.2f}s, en contraste con el valor nominal de {tau_ideal}s. Esto representa una desviacion metrica del {desviacion:.1f}%. Cambios significativos en este valor son indicadores directos de alteraciones fisicas en la planta (ej. aumento de inercia o perdidas de presion)."
-    return steps, {"Respuesta Temporal": fig}, interp
+    t_max = max(t_test * 2, tau_real * 5)
+    t = np.linspace(0, t_max, 400)
+    y_real = recorrido * (1 - np.exp(-t / tau_real))
+    y_ideal = recorrido * (1 - np.exp(-t / tau_ideal))
 
-def solve_case_5(H, R_top, h0, a, C_factor):
-    g = 9.8
-    H, R_top = max(H, 0.001), max(R_top, 0.001)
-    K_val = (C_factor * a * math.sqrt(2 * g)) / (math.pi * (R_top/H)**2)
-    C_1 = (2/5) * (max(h0, 0)**(5/2))
-    t_end = C_1 / max(K_val, 1e-8)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t, y=y_real, mode="lines", name=f"Real tau={tau_real:.2f}s"))
+    fig.add_trace(go.Scatter(x=t, y=y_ideal, mode="lines", name=f"Ideal tau={tau_ideal:.2f}s"))
+    fig.add_trace(go.Scatter(x=[t_test], y=[y_test], mode="markers+text", text=["Prueba"], textposition="bottom right", name="Dato medido"))
+    fig.update_layout(**base_layout("Caso 4: Respuesta de actuador hidráulico", "Tiempo (s)", "Posición (cm)"))
+
+    interpretation = (
+        f"La constante de tiempo real es {tau_real:.2f} s. "
+        f"Comparada con la ideal de {tau_ideal:.2f} s, permite evaluar si el actuador responde lento. "
+        "Un valor mayor puede indicar fricción, fuga interna, obstrucción o aumento de viscosidad del fluido."
+    )
+
+    return steps, {"Actuador hidráulico": fig}, interpretation
+
+
+# ==========================================================
+# CASO 5: TANQUE CÓNICO
+# ==========================================================
+
+def solve_case_5(H=2, R_top=0.5, h0=2, a=0.005, C_factor=0.6, g=9.8):
+    H = safe_positive(H, 2)
+    R_top = safe_positive(R_top, 0.5)
+    h0 = safe_positive(h0, H)
+    a = safe_positive(a, 0.005)
+    C_factor = safe_positive(C_factor, 0.6)
+    g = safe_positive(g, 9.8)
+
+    if h0 > H:
+        h0 = H
+
+    ratio = R_top / H
+    area_coef = math.pi * ratio**2
+    K = (C_factor * a * math.sqrt(2 * g)) / area_coef
+    t_end = ((2 / 5) * h0**(5 / 2)) / K
 
     steps = [
-        r"**1. Modelo de Fluido No Lineal:**",
-        r"$$ A(h)\frac{dh}{dt} = -C a \sqrt{2gh} $$",
-        r"**2. Sustitucion por Geometria Conica:**",
-        rf"$$ r = \frac{{R}}{{H}}h \implies A(h) = {math.pi*(R_top/H)**2:.4f} h^2 $$",
-        r"**3. Separacion en Ecuacion Diferencial:**",
-        rf"$$ h^{{3/2}} dh = -{K_val:.5f} dt $$",
-        r"**4. Integracion Indefinida y C_1:**",
-        rf"$$ \frac{{2}}{{5}}h^{{5/2}} = -Kt + C_1 $$",
-        rf"$$ h(0) = {h0} \implies C_1 = {C_1:.4f} $$",
-        r"**5. Ecuacion Horaria Despejada:**",
-        rf"$$ h(t) = \left( {h0**(5/2):.3f} - 2.5({K_val:.5f})t \right)^{{0.4}} $$",
-        r"**6. Tiempo Limite Operativo:**",
-        rf"$$ t = \frac{{{C_1:.4f}}}{{{K_val:.5f}}} \approx {t_end:.2f} \text{ segundos} $$"
+        "### 1. Relación geométrica del cono",
+        r"$$\frac{r}{h}=\frac{R}{H}$$",
+        rf"$$r={ratio:.4f}h$$",
+        "### 2. Área variable",
+        rf"$$A(h)=\pi({ratio:.4f}h)^2={area_coef:.5f}h^2$$",
+        "### 3. Ley de Torricelli",
+        r"$$A(h)\frac{dh}{dt}=-Ca\sqrt{2gh}$$",
+        "### 4. EDO separable",
+        rf"$$h^{{3/2}}dh=-{K:.6f}dt$$",
+        "### 5. Integración",
+        r"$$\frac{2}{5}h^{5/2}=-Kt+C_1$$",
+        rf"$$h(t)=\left({h0**(5/2):.4f}-2.5({K:.6f})t\right)^{{2/5}}$$",
+        "### 6. Tiempo total de vaciado",
+        rf"$$t={t_end:.2f}\ s={t_end/60:.2f}\ min$$",
     ]
 
-    t_max = max(5.0, t_end * 1.2)
-    t_vec = np.linspace(0, t_max, 500)
-    base_vec = np.maximum(0, h0**(5/2) - 2.5 * K_val * t_vec)
-    h_vec = base_vec**(2/5)
-    
+    t = np.linspace(0, t_end, 400)
+    base = np.maximum(0, h0**(5 / 2) - 2.5 * K * t)
+    h = base ** (2 / 5)
+
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t_vec, y=h_vec, mode='lines', fill='tozeroy', line=dict(color='#00A8E1', width=4), fillcolor='rgba(0, 168, 225, 0.15)'))
-    fig.add_trace(go.Scatter(x=[t_end], y=[0], mode='markers+text', text=[f"Vaciado en {t_end:.1f}s"], textposition="top right", marker=dict(size=12, color='#0A2540')))
-    fig.update_layout(**get_base_layout("Perfil de Altura No Lineal", "Tiempo (segundos)", "Altura (m)"))
-    
-    interp = f"Analisis: La ecuacion diferencial arroja un vaciado critico a los {t_end:.2f} segundos. Debido a la reduccion cuadratica del area transversal en geometrias conicas, la aceleracion del vaciado es extrema en las etapas finales del proceso, requiriendo consideraciones especiales en el control industrial."
-    return steps, {"Altura Conica": fig}, interp
+    fig.add_trace(go.Scatter(x=t / 60, y=h, mode="lines", fill="tozeroy", name="Altura h(t)"))
+    fig.add_trace(go.Scatter(x=[t_end / 60], y=[0], mode="markers+text", text=["Vacío"], textposition="top right", name="Vaciado"))
+    fig.update_layout(**base_layout("Caso 5: Vaciado de tanque cónico", "Tiempo (min)", "Altura (m)"))
+
+    interpretation = (
+        f"El modelo indica un tiempo aproximado de vaciado de {t_end/60:.2f} minutos. "
+        "A diferencia del tanque cilíndrico, el área transversal cambia con la altura, por eso el comportamiento de la curva es no lineal."
+    )
+
+    return steps, {"Vaciado cónico": fig}, interpretation
