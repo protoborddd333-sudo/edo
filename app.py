@@ -14,68 +14,92 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    html, body, [class*="css"] {
+        font-family: "Times New Roman", Times, serif;
+    }
+
     .stApp {
-        background-color: #F4FAFD;
+        background-color: #00A3E0;
     }
 
     section[data-testid="stSidebar"] {
-        background-color: #DFF4FC;
+        background-color: #EAF7FC;
+        border-right: 1px solid #BDE7F5;
     }
 
-    .header-box {
-        background-color: #00A3E0;
-        padding: 1.2rem;
-        border-radius: 16px;
-        color: white;
-        margin-bottom: 1rem;
+    .block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 1rem;
+        max-width: 1180px;
+    }
+
+    .top-panel {
+        background-color: #EAF7FC;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        border: 1px solid #BDE7F5;
+        margin-bottom: 0.8rem;
     }
 
     .header-title {
-        font-size: 32px;
-        font-weight: 800;
-        color: white;
+        font-size: 25px;
+        font-weight: bold;
+        color: black;
         margin-bottom: 0px;
+        line-height: 1.15;
     }
 
     .header-subtitle {
-        font-size: 16px;
-        color: white;
-        margin-top: 4px;
+        font-size: 14px;
+        color: #1F2937;
+        margin-top: 2px;
     }
 
     .main-card {
-        background-color: white;
-        padding: 1.3rem;
-        border-radius: 14px;
+        background-color: #FFFFFF;
+        padding: 0.9rem;
+        border-radius: 10px;
         border: 1px solid #CDEAF5;
-        box-shadow: 0px 2px 8px rgba(0,0,0,0.04);
-        margin-bottom: 1rem;
+        box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+        margin-bottom: 0.7rem;
     }
 
     .metric-card {
-        background-color: #E9F8FD;
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #BEE8F7;
+        background-color: #EAF7FC;
+        padding: 0.55rem;
+        border-radius: 9px;
+        border: 1px solid #BDE7F5;
         text-align: center;
     }
 
     .metric-title {
-        font-size: 14px;
+        font-size: 12px;
         color: #475569;
     }
 
     .metric-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: #0F172A;
+        font-size: 17px;
+        font-weight: bold;
+        color: black;
     }
 
     .footer {
         text-align: center;
-        color: #475569;
-        font-size: 14px;
-        padding-top: 1rem;
+        color: white;
+        font-size: 13px;
+        padding-top: 0.5rem;
+    }
+
+    h1, h2, h3, h4, h5, h6, p, label, div, span {
+        font-family: "Times New Roman", Times, serif !important;
+    }
+
+    h2 {
+        font-size: 24px !important;
+    }
+
+    h3 {
+        font-size: 19px !important;
     }
     </style>
     """,
@@ -148,15 +172,15 @@ def result_summary(case_id, values):
 
 logo = load_logo()
 
-st.markdown('<div class="header-box">', unsafe_allow_html=True)
+st.markdown('<div class="top-panel">', unsafe_allow_html=True)
 
-col_logo, col_title = st.columns([1, 5])
+col_logo, col_title = st.columns([0.8, 5.2])
 
 with col_logo:
     if logo is not None:
-        st.image(logo, width=140)
+        st.image(logo, width=85)
     else:
-        st.markdown("TECSUP")
+        st.markdown("**TECSUP**")
 
 with col_title:
     st.markdown(
@@ -165,7 +189,7 @@ with col_title:
         Resolución de Ecuaciones Diferenciales Ordinarias
         </div>
         <div class="header-subtitle">
-        Aplicación interactiva para modelos industriales con desarrollo matemático, gráfica e interpretación técnica.
+        Modelos matemáticos aplicados a procesos industriales
         </div>
         """,
         unsafe_allow_html=True
@@ -186,7 +210,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 
 st.sidebar.title("Parámetros")
-st.sidebar.write("Modifica los datos del caso seleccionado.")
+st.sidebar.markdown("Datos de entrada del modelo seleccionado.")
 
 
 values = {}
@@ -198,7 +222,6 @@ if selected_case == 1:
     values["T1"] = st.sidebar.number_input("Temperatura medida T1 (°C)", value=100.0)
     values["t1"] = st.sidebar.number_input("Tiempo de medición t1 (min)", value=10.0, min_value=0.01)
     values["T_obj"] = st.sidebar.number_input("Temperatura objetivo (°C)", value=40.0)
-
     steps, figures, interpretation = solver.solve_case_1(**values)
 
 elif selected_case == 2:
@@ -208,7 +231,6 @@ elif selected_case == 2:
     values["a"] = st.sidebar.number_input("Área del orificio a (m²)", value=0.005, min_value=0.000001, format="%.6f")
     values["C_factor"] = st.sidebar.number_input("Coeficiente C", value=0.6, min_value=0.01)
     values["g"] = st.sidebar.number_input("Gravedad g (m/s²)", value=9.8, min_value=0.01)
-
     steps, figures, interpretation = solver.solve_case_2(**values)
 
 elif selected_case == 3:
@@ -219,7 +241,6 @@ elif selected_case == 3:
     values["rin"] = st.sidebar.number_input("Caudal entrada rin (L/min)", value=5.0, min_value=0.01)
     values["rout"] = st.sidebar.number_input("Caudal salida rout (L/min)", value=5.0, min_value=0.01)
     values["t_target"] = st.sidebar.number_input("Tiempo a evaluar (min)", value=60.0, min_value=0.01)
-
     steps, figures, interpretation = solver.solve_case_3(**values)
 
 elif selected_case == 4:
@@ -228,7 +249,6 @@ elif selected_case == 4:
     values["y_test"] = st.sidebar.number_input("Posición medida y (cm)", value=6.32, min_value=0.01)
     values["tau_ideal"] = st.sidebar.number_input("Tau ideal (s)", value=4.0, min_value=0.01)
     values["recorrido"] = st.sidebar.number_input("Recorrido máximo (cm)", value=10.0, min_value=0.01)
-
     steps, figures, interpretation = solver.solve_case_4(**values)
 
 else:
@@ -239,7 +259,6 @@ else:
     values["a"] = st.sidebar.number_input("Área del orificio a (m²)", value=0.005, min_value=0.000001, format="%.6f")
     values["C_factor"] = st.sidebar.number_input("Coeficiente C", value=0.6, min_value=0.01)
     values["g"] = st.sidebar.number_input("Gravedad g (m/s²)", value=9.8, min_value=0.01)
-
     steps, figures, interpretation = solver.solve_case_5(**values)
 
 
@@ -259,11 +278,11 @@ for col, item in zip(summary_cols, result_summary(selected_case, values)):
             unsafe_allow_html=True
         )
 
-left_col, right_col = st.columns([1, 1.25])
+left_col, right_col = st.columns([1, 1.2])
 
 with left_col:
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.subheader("Desarrollo matemático paso a paso")
+    st.subheader("Desarrollo matemático")
     render_steps(steps)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -272,11 +291,11 @@ with right_col:
     st.subheader("Gráfica del modelo")
 
     for _, fig in figures.items():
+        fig.update_layout(height=430)
         st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Interpretación técnica")
     st.info(interpretation)
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 
