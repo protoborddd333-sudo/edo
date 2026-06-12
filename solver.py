@@ -1,5 +1,4 @@
 # solver.py
-# Compatible con Python 3.12, Streamlit Cloud, NumPy y Plotly
 
 import math
 import numpy as np
@@ -26,10 +25,6 @@ def safe_positive(value, default):
     except Exception:
         return default
 
-
-# ==========================================================
-# CASO 1: ENFRIAMIENTO DE NEWTON
-# ==========================================================
 
 def solve_case_1(T0=150, Ta=25, T1=100, t1=10, T_obj=40):
     T0 = safe_positive(T0, 150)
@@ -83,10 +78,6 @@ def solve_case_1(T0=150, Ta=25, T1=100, t1=10, T_obj=40):
     return steps, {"Curva de enfriamiento": fig}, interpretation
 
 
-# ==========================================================
-# CASO 2: TORRICELLI TANQUE CILÍNDRICO
-# ==========================================================
-
 def solve_case_2(r=1, h0=4, a=0.005, C_factor=0.6, g=9.8):
     r = safe_positive(r, 1)
     h0 = safe_positive(h0, 4)
@@ -130,10 +121,6 @@ def solve_case_2(r=1, h0=4, a=0.005, C_factor=0.6, g=9.8):
 
     return steps, {"Vaciado cilíndrico": fig}, interpretation
 
-
-# ==========================================================
-# CASO 3: MEZCLAS
-# ==========================================================
 
 def solve_case_3(V=500, Q0=0, cin=0.2, rin=5, rout=5, t_target=60):
     V = safe_positive(V, 500)
@@ -181,10 +168,6 @@ def solve_case_3(V=500, Q0=0, cin=0.2, rin=5, rout=5, t_target=60):
     return steps, {"Mezcla": fig}, interpretation
 
 
-# ==========================================================
-# CASO 4: ACTUADOR HIDRÁULICO
-# ==========================================================
-
 def solve_case_4(t_test=8, y_test=6.32, tau_ideal=4, recorrido=10):
     t_test = safe_positive(t_test, 8)
     recorrido = safe_positive(recorrido, 10)
@@ -227,10 +210,6 @@ def solve_case_4(t_test=8, y_test=6.32, tau_ideal=4, recorrido=10):
 
     return steps, {"Actuador hidráulico": fig}, interpretation
 
-
-# ==========================================================
-# CASO 5: TANQUE CÓNICO
-# ==========================================================
 
 def solve_case_5(H=2, R_top=0.5, h0=2, a=0.005, C_factor=0.6, g=9.8):
     H = safe_positive(H, 2)
